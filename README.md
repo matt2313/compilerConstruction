@@ -4,7 +4,7 @@ Repository for the source files and documentation of the MattC compiler, created
 
 ## Contents
 
-- An `/srs/` folder that holds the source files for the compiler (`mattc_par.mly`, `mattc_lex.mly`)
+- An `/srs/` folder that holds the source files for the compiler (`mattc_par.mly`, `mattc_lex.mly`, `mattc.ml`), as well as scripts to comile the compiler (`build_mattc`, `build_mattc.bat`)
 - An `/examples/` folder containing test programs that demonstrate code written in MattC
 - A `/doc/` folder containing documentation on how to write MattC code
 
@@ -13,4 +13,4 @@ Repository for the source files and documentation of the MattC compiler, created
 
 1. Navigate to the `/src/` folder
 2. Run `build_mc` (for unix) or `build_mc.bat` (for windows)
-3. You can then run `build_mc <filename>`, where `filename` is the file you want to compile. MattC files use the `.mc` file extension.
+3. You can then run `build_mc <filename>`, where `<filename>` is the file you want to compile. MattC files use the `.mc` file extension

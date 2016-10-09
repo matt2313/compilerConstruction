@@ -1,4 +1,4 @@
-%token <int> INT
+%token <int> INT_LITERAL
 
 %token OPBRACKET    /* Open bracket */
 %token CLBRACKET    /* Close bracket */
@@ -32,8 +32,13 @@ exp_list:
 
 exp:
     | OPBRACKET exp CLBRACKET           { $2 }
-    | INT                               { $1 }
+    | literal                           { $1 }
     | operation                         { $1 }
+    | EOE                               { 0 }
+;
+
+literal:
+    | INT_LITERAL                       { $1 }
 ;
 
 operation:
