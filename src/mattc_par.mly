@@ -26,7 +26,7 @@ start:
 ;
 
 exp_list:
-    | exp                               { [$1] }
+    | exp EOE                           { [$1] }
     | exp EOE exp_list                  { $1::$3 }
 ;
 
