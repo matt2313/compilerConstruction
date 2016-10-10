@@ -1,3 +1,5 @@
+**Index**
+
 # MattC
 MattC is a C-style language. At the moment it supports expressions operations on int literals, and comments.
 
@@ -5,6 +7,7 @@ MattC is a C-style language. At the moment it supports expressions operations on
 For information on the syntax of MattC, see the following links:
 * [Basic Syntax](basicSyntax)
 * [Types](types)
+* [Numerical Operations](numericalOperations)
 
 ## Code examples
 Code examples can be found in the `/examples/` folder

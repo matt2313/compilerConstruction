@@ -1,4 +1,4 @@
-[Index](index) / Basic Syntax
+**[Index](index) / Basic Syntax**
 
 # Basic Syntax
 

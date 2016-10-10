@@ -3,6 +3,7 @@
 %token OPBRACKET    /* Open bracket */
 %token CLBRACKET    /* Close bracket */
 
+%token NEGATE       /* Make a number negative */
 %token PLUS         /* Addition of 2 expressions */
 %token MINUS        /* Substraction of 2 expressions */
 %token MULTIPLY     /* Multiplication of 2 expressions */
@@ -14,7 +15,8 @@
 %left PLUS          /* Lowest precedence */
 %left MINUS
 %left MULTIPLY 
-%left DIVIDE        /* Highest precedence */
+%left DIVIDE
+%nonassoc NEGATE    /* Highest precedence */
 
 %start start
 %type <int list> start
@@ -44,6 +46,7 @@ literal:
 operation:
     | exp PLUS exp                      { $1 + $3 }
     | exp MINUS exp                     { $1 - $3 }
+    | MINUS exp %prec NEGATE            { -$2 }
     | exp MULTIPLY exp                  { $1 * $3 }
     | exp DIVIDE exp                    { $1 / $3 }
 ;
