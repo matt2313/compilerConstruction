@@ -1,3 +1,5 @@
+/* This code shows basic arithmetic on ints, and how to use both types of comments */
+
 1; // 1
 // Comment
 1 + 1; // 2
