@@ -13,4 +13,5 @@ Repository for the source files and documentation of the MattC compiler, created
 
 1. Navigate to the `/src/` folder
 2. Run `build_mc` (for unix) or `build_mc.bat` (for windows)
+  - On the lab machines, remember to run the command `module load opam` so that the ocaml binaries are available
 3. You can then run `build_mc <filename>`, where `<filename>` is the file you want to compile. MattC files use the `.mc` file extension
