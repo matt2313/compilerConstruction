@@ -6,6 +6,7 @@ MattC is a C-style language. At the moment it supports expressions operations on
 ## Index
 For information on the syntax of MattC, see the following links:
 * [Basic Syntax](basicSyntax)
+* [Loops and Conditional Statements](loopsConditionalStatements)
 * [Types](types)
 * [Numerical Operations](numericalOperations)
 * [Boolean Operations](booleanOperations)

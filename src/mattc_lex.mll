@@ -4,19 +4,19 @@
 }
 
 let whitespace = [' ' '\t']+
-let newline = ['\n' '\r']+
+let newline = ['\n' '\r']
 let int = ['0'-'9']+
 let single_line_comment = "//" [^ '\n' '\r']*
-let multi_line_comment = "/*" ([^ '*']* ("*" [^ '/'])?)* "*/"
-let multi_line_comment_err = "/*" ([^ '*']* ("*" [^ '/'])?)*
 let not_eq = "!=" | "<>"
 
 rule read = parse
     | single_line_comment   { read lexbuf } (* This ignores comments *)
-    | multi_line_comment    { read lexbuf }
+    | "/*"                  { read_multi_line_comment lexbuf }
     | whitespace            { read lexbuf } (* This ignores whitespace *)
-    | newline               { read lexbuf } (* This ignores newlines *)
+    | newline               { Lexing.new_line lexbuf; read lexbuf } (* We need to keep track of when we go to a new line *)
     | int as value          { INT_LITERAL (int_of_string value) }
+    | "while"               { WHILE }
+    | "do"                  { DO }
     | "true"                { BOOL_LITERAL (true) }
     | "false"               { BOOL_LITERAL (false) }
     | "+"                   { PLUS }
@@ -39,6 +39,16 @@ rule read = parse
     | ";"                   { EOE }
     | "("                   { OPBRACKET }
     | ")"                   { CLBRACKET }
+    | "{"                   { OPBRACE }
+    | "}"                   { CLBRACE }
     | eof                   { EOF }
-    | multi_line_comment_err    { raise(SyntaxError("Missing end of multi-line comment. Did you miss a '*/'?")) }
-    | _                         { raise(SyntaxError("Unexpected character '" ^ Lexing.lexeme lexbuf ^ "'")) }
+    | _                     { raise(SyntaxError("Unexpected character '" ^ Lexing.lexeme lexbuf ^ "'")) }
+
+(* Can't do this with a simple regular expression since we have to keep track of lines *)
+and read_multi_line_comment = parse
+    | newline               { Lexing.new_line lexbuf; read_multi_line_comment lexbuf }
+    | [^ '*']               { read_multi_line_comment lexbuf }
+    | "*" newline           { Lexing.new_line lexbuf; read_multi_line_comment lexbuf }
+    | "*" [^ '/']#newline   { read_multi_line_comment lexbuf }
+    | "*/"                  { read lexbuf } (* Go back to normal *)
+    | eof                   { raise(SyntaxError("Missing end of multi-line comment. Did you miss a '*/'?")) }

@@ -1,17 +1,31 @@
 /*
-type expression =
-  | While of expression * expression (* while e do e *)
-  | If of expression * expression * expression (* if e do e else e *)
-  | Asg of expression * expression (* e := e *)
-  | Deref of expression (* !e *)
-  | Application of expression * expression (* e(e) *)
-  | Readint (* read_int () *)
-  | Printint of expression (* print_int (e) *)
-  | Identifier of string (* x *)
-  | Let of string * expression * expression (* let x = e in e *)
-  | New of string * expression * expression (* new x = e in e *)
-type fundef = string * string list * expression
-type program = fundef list
+TODO:
+
+If statement
+If-Else statement
+For Loop
+
+Read Int
+Read String
+Print String
+Print Int
+
+Assign Variable
+Evaluate Variable
+
+Function Definition
+Function Application
+
+Change program to list of functions instead of list of commands
+
+Type conversions
+
+Float datatype
+Read Float
+Print Float
+
+Let ... = ... in ...
+New ... = ... in ...
 */
 
 %token <int> INT_LITERAL
@@ -19,6 +33,8 @@ type program = fundef list
 
 %token OPBRACKET    /* Open bracket */
 %token CLBRACKET    /* Close bracket */
+%token OPBRACE      /* Open brace */
+%token CLBRACE      /* Close brace */
 
 %token NEGATE       /* Make a number negative */
 %token PLUS         /* Addition of 2 expressions */
@@ -40,6 +56,9 @@ type program = fundef list
 %token NAND         /* Inverse 'and' boolean operatorr */
 %token NOR          /* Inverse inclusive 'or' boolean operator */
 %token NXOR         /* Inverse exclusive 'or' boolean operator */
+
+%token WHILE        /* Condition for while and do while loops */
+%token DO           /* Used to specify start of a do while loop */
 
 %token EOE          /* End of expression */
 %token EOF          /* End of file*/
@@ -72,16 +91,33 @@ type program = fundef list
 
 start:
     | exp_list EOF                      { $1 }
+    | EOF                               { [""] }
 ;
 
 exp_list:
-    | exp EOE                           { [$1] }
-    | exp EOE exp_list                  { $1::$3 }
+    | statement                         { $1 }
+    | statement exp_list                { $1@$2 }
+;
+
+statement:
+    | exp EOE                           { $1 }
+    | while_loop                        { $1 }
+    | do_while_loop                     { $1 }
 ;
 
 exp:
-    | exp_int                           { string_of_int $1 }
-    | exp_bool                          { string_of_bool $1 }
+    | exp_int                           { [string_of_int $1] }
+    | exp_bool                          { [string_of_bool $1] }
+;
+
+while_loop:
+    | WHILE OPBRACKET exp_bool CLBRACKET OPBRACE exp_list CLBRACE           { (string_of_bool $3)::$6 }
+    | WHILE OPBRACKET exp_bool CLBRACKET OPBRACE CLBRACE                    { [string_of_bool $3] }
+;
+
+do_while_loop:
+    | DO OPBRACE exp_list CLBRACE WHILE OPBRACKET exp_bool CLBRACKET EOE    { (string_of_bool $7)::$3 }
+    | DO OPBRACE CLBRACE WHILE OPBRACKET exp_bool CLBRACKET EOE             { [string_of_bool $6] }
 ;
 
 exp_int:
