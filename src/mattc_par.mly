@@ -1,16 +1,13 @@
 /*
 TODO:
 
-If statement
-If-Else statement
-For Loop
-
 Read Int
 Read String
 Print String
 Print Int
 
 Assign Variable
+    - This will mean making sure keywords have whitespace at the end
 Evaluate Variable
 
 Function Definition
@@ -23,6 +20,8 @@ Type conversions
 Float datatype
 Read Float
 Print Float
+For Loop
+IF-ELSE IF-ELSE... statements
 
 Let ... = ... in ...
 New ... = ... in ...
@@ -57,6 +56,9 @@ New ... = ... in ...
 %token NOR          /* Inverse inclusive 'or' boolean operator */
 %token NXOR         /* Inverse exclusive 'or' boolean operator */
 
+%token IF           /* Start of an if statement */
+%token ELSE         /* Start of an else statement */
+
 %token WHILE        /* Condition for while and do while loops */
 %token DO           /* Used to specify start of a do while loop */
 
@@ -90,19 +92,23 @@ New ... = ... in ...
 %%
 
 start:
-    | exp_list EOF                      { $1 }
+    | statement_list EOF                      { $1 }
     | EOF                               { [""] }
 ;
 
-exp_list:
+statement_list:
     | statement                         { $1 }
-    | statement exp_list                { $1@$2 }
+    | statement statement_list          { $1@$2 }
 ;
+
+scoped_statement_list:
+    | OPBRACE statement_list CLBRACE    { $2 }
+    | OPBRACE CLBRACE                   { [] }
 
 statement:
     | exp EOE                           { $1 }
     | while_loop                        { $1 }
-    | do_while_loop                     { $1 }
+    | if_statement                      { $1 }
 ;
 
 exp:
@@ -111,13 +117,13 @@ exp:
 ;
 
 while_loop:
-    | WHILE OPBRACKET exp_bool CLBRACKET OPBRACE exp_list CLBRACE           { (string_of_bool $3)::$6 }
-    | WHILE OPBRACKET exp_bool CLBRACKET OPBRACE CLBRACE                    { [string_of_bool $3] }
+    | WHILE exp_bool scoped_statement_list          { (string_of_bool $2)::$3 }
+    | DO scoped_statement_list WHILE exp_bool EOE   { $2@[string_of_bool $4] }
 ;
 
-do_while_loop:
-    | DO OPBRACE exp_list CLBRACE WHILE OPBRACKET exp_bool CLBRACKET EOE    { (string_of_bool $7)::$3 }
-    | DO OPBRACE CLBRACE WHILE OPBRACKET exp_bool CLBRACKET EOE             { [string_of_bool $6] }
+if_statement:
+    | IF exp_bool scoped_statement_list                             { (string_of_bool $2)::$3 }
+    | IF exp_bool scoped_statement_list ELSE scoped_statement_list  { (string_of_bool $2)::$3@$5 }
 ;
 
 exp_int:

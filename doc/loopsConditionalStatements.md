@@ -2,6 +2,7 @@
 
 # Loops and Conditional Statements
 Loops and conditional statements are used to alter the control flow of the program.
+For all syntax listed here, brackets around the `condition` are recommended but not required.
 
 ## While Loop
 A while loop will repeat a list of statements for as long as a given condition is met. The syntax for a while loop is:
@@ -47,6 +48,8 @@ else
 runAlways
 ```
 If `condition` evaluates to `true` then `runIfTrue` will execute, if `condition` evaluates to `false` then `runIfFalse` will execute instead. `runAlways` will always execute afterwards, regardless of `condition`.
+
+`else if` statements are not supported, use nested `if` statements instead.
 
 ## Nesting
 All conditional statements can be nested within each other and still be valid, for example:

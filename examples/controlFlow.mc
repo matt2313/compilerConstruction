@@ -14,9 +14,9 @@ while
 
 // This syntax is possible but not reccomended
 while
-(
+
 true
-)
+
 {
     100 - 10;
 }
@@ -52,3 +52,43 @@ do
     12*6;
 }
 while(false);
+
+if(true)
+{
+    10 + 46;
+    12 - 6;
+}
+
+if (6 > 7)
+{
+    200;
+}
+
+// Again, this is not recommended
+if
+12 > 5
+{
+    // You can nest loops and if statements too
+    while(true)
+    {
+        12 + 5;
+        17;
+    }
+}
+else
+{
+    do
+    {
+        true AND false;
+    }
+    while 12 < 5;
+}
+
+do
+{
+    if(false)
+    {
+        100;
+    }
+}
+while true;

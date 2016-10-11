@@ -17,6 +17,8 @@ rule read = parse
     | int as value          { INT_LITERAL (int_of_string value) }
     | "while"               { WHILE }
     | "do"                  { DO }
+    | "if"                  { IF }
+    | "else"                { ELSE }
     | "true"                { BOOL_LITERAL (true) }
     | "false"               { BOOL_LITERAL (false) }
     | "+"                   { PLUS }
