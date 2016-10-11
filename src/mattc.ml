@@ -14,8 +14,7 @@ let _ =
     then let fileIn = open_in (Array.get Sys.argv 1) in
         Lexing.from_channel fileIn
         |> Mattc_par.start Mattc_lex.read
-        (* This only works if we know every line evaluates to an int *)
-        |> List.map string_of_int
+        (* This only works if we know every line evaluates to a string *)
         |> String.concat "\n"
         |> print_endline;
         close_in fileIn;

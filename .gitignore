@@ -3,6 +3,7 @@ src/mattc_lex.ml
 src/mattc_par.ml
 src/mattc_par.mli
 mattc
+*.output
 
 # Binary files
 *.cmi
