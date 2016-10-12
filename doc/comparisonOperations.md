@@ -2,7 +2,7 @@
 
 # Comparison Operations
 
-All comparison operations can be performed on `int`s, including the result of other `int` expressions, and always return a `bool`.
+All comparison operations can be performed on `int` and `float` expressions, and always return a `bool`.
 
 ## Equal and Not Equal
 The `=` operator returns 'true' if boths its operands have the same value, and 'false' otherwise. It has an inverse operation, `!=`.

@@ -1,11 +1,6 @@
 /*
 TODO:
 
-Read Int
-Read String
-Print String
-Print Int
-
 Assign Variable
     - This will mean making sure keywords have whitespace at the end
 Evaluate Variable
@@ -15,25 +10,37 @@ Function Application
 
 Change program to list of functions instead of list of commands
 
+Substring
+
 Type conversions
 
-Float datatype
-Read Float
-Print Float
+Char datatype
+Read Char
+Print Char
+
 For Loop
-IF-ELSE IF-ELSE... statements
+IF ELSE-IF ... ELSE
 
 Let ... = ... in ...
 New ... = ... in ...
 */
 
 %token <int> INT_LITERAL
+%token <float> FLOAT_LITERAL
 %token <bool> BOOL_LITERAL
+%token <string> STRING_LITERAL
 
 %token OPBRACKET    /* Open bracket */
 %token CLBRACKET    /* Close bracket */
 %token OPBRACE      /* Open brace */
 %token CLBRACE      /* Close brace */
+
+%token READ_INT     /* Get int from terminal */
+%token READ_STRING  /* Get string from terminal */
+%token READ_FLOAT   /* Get float form terminal */
+%token PRINT_INT    /* Print int to terminal */
+%token PRINT_STRING /* Print string to terminal */
+%token PRINT_FLOAT /* Print float to terminal */
 
 %token NEGATE       /* Make a number negative */
 %token PLUS         /* Addition of 2 expressions */
@@ -47,6 +54,8 @@ New ... = ... in ...
 %token G_THAN_EQ    /* Greater than or equal to comparison */
 %token EQ           /* Equal comparison */
 %token NOT_EQ       /* Not equal comparison */
+
+%token CONCAT       /* String concatonation */
 
 %token AND          /* 'and' boolean operator */
 %token OR           /* Inclusive 'or' boolean operator */
@@ -84,7 +93,9 @@ New ... = ... in ...
 %left MINUS
 %left MULTIPLY 
 %left DIVIDE
-%nonassoc NEGATE    /* Highest precedence */
+%nonassoc NEGATE
+
+%left CONCAT       /* Highest precedence */
 
 %start start
 %type <string list> start
@@ -113,7 +124,10 @@ statement:
 
 exp:
     | exp_int                           { [string_of_int $1] }
+    | exp_float                         { [string_of_float $1] }
     | exp_bool                          { [string_of_bool $1] }
+    | exp_string                        { [$1] }
+    | io_operation                      { $1 }
 ;
 
 while_loop:
@@ -126,10 +140,23 @@ if_statement:
     | IF exp_bool scoped_statement_list ELSE scoped_statement_list  { (string_of_bool $2)::$3@$5 }
 ;
 
+io_operation:
+    | PRINT_INT OPBRACKET exp_int CLBRACKET         { [string_of_int $3] }
+    | PRINT_STRING OPBRACKET exp_string CLBRACKET   { [$3] }
+;
+
 exp_int:
     | OPBRACKET exp_int CLBRACKET       { $2 }
     | INT_LITERAL                       { $1 }
     | operation_int                     { $1 }
+    | READ_INT OPBRACKET CLBRACKET      { 0 }
+;
+
+exp_float:
+    | OPBRACKET exp_float CLBRACKET     { $2 }
+    | FLOAT_LITERAL                     { $1 }
+    | operation_float                   { $1 }
+    | READ_FLOAT OPBRACKET CLBRACKET    { 0.0 }
 ;
 
 exp_bool:
@@ -138,12 +165,26 @@ exp_bool:
     | operation_bool                    { $1 }
 ;
 
+exp_string:
+    | OPBRACKET exp_string CLBRACKET    { $2 }
+    | STRING_LITERAL                    { $1 }
+    | operation_string                  { $1 }
+;
+
 operation_int:
     | exp_int PLUS exp_int              { $1 + $3 }
     | exp_int MINUS exp_int             { $1 - $3 }
     | MINUS exp_int %prec NEGATE        { -$2 }
     | exp_int MULTIPLY exp_int          { $1 * $3 }
     | exp_int DIVIDE exp_int            { $1 / $3 }
+;
+
+operation_float:
+    | exp_float PLUS exp_float         { $1 +. $3 }
+    | exp_float MINUS exp_float        { $1 -. $3 }
+    | MINUS exp_float %prec NEGATE     { -.$2 }
+    | exp_float MULTIPLY exp_float     { $1 *. $3 }
+    | exp_float DIVIDE exp_float       { $1 /. $3 }
 ;
 
 operation_bool:
@@ -163,4 +204,16 @@ operation_bool:
     | exp_int G_THAN_EQ exp_int         { $1 >= $3 }
     | exp_int NOT_EQ exp_int            { not ($1 = $3) }
     | exp_int EQ exp_int                { $1 = $3 }
+    
+    | exp_float L_THAN exp_float        { $1 < $3 }
+    | exp_float G_THAN exp_float        { $1 > $3 }
+    | exp_float L_THAN_EQ exp_float     { $1 <= $3 }
+    | exp_float G_THAN_EQ exp_float     { $1 >= $3 }
+    | exp_float NOT_EQ exp_float        { not ($1 = $3) }
+    | exp_float EQ exp_float            { $1 = $3 }
+;
+
+operation_string:
+    | exp_string CONCAT exp_string      { $1 ^ $3 }
+    | READ_STRING OPBRACKET CLBRACKET   { "" }
 ;

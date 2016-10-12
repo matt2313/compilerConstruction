@@ -2,7 +2,7 @@
 
 # Numerical Operations
 
-All numerical operations can be performed on `int`s, including the result of other `int` expressions.
+All numerical operations can be performed on `int` and `float` expressions.
 
 ## Addition
 The `+` operator returns the value of its operands added together. It is an infix operator, so it is placed in between its operands.
