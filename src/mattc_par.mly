@@ -1,8 +1,6 @@
 /*
 TODO:
 
-Change program to list of functions instead of list of commands
-
 Substring
 
 Type conversions
@@ -108,8 +106,13 @@ New ... = ... in ...
 %%
 
 start:
-    | statement_list EOF                      { $1 }
-    | EOF                               { [""] }
+    | function_list EOF                { $1 }
+    | EOF                              { [""] }
+;
+
+function_list:
+    | function_definition               { $1 }
+    | function_definition function_list { $1@$2 }
 ;
 
 statement_list:
@@ -232,7 +235,17 @@ operation_float:
     | exp_float DIVIDE exp_float        { $1 /. $3 }
     /* For now, assume all variables and functions are floats (since we can't actually check) */
     | IDENTIFIER                        { 0.0 }
-    | IDENTIFIER bracketed_arg_list     { 0.0 }
+    | IDENTIFIER bracketed_param_list   { 0.0 }
+;
+
+bracketed_param_list:
+    | OPBRACKET CLBRACKET               { 0.0 }
+    | OPBRACKET param_list CLBRACKET    { 0.0 }
+;
+
+param_list:
+    | exp                               { 0.0 }
+    | exp SEPERATOR param_list          { 0.0 }
 ;
 
 operation_bool:

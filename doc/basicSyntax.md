@@ -2,7 +2,7 @@
 
 # Basic Syntax
 
-Every line in MattC must consist of any number of expressions, each followed by a semicolon (`;`). Whitespace and comments can be used to seperate keywords and identifiers, but are otherwise ignored.
+Every program in MattC is a list of functions seperated by newlines. Every statement in MattC has to end with a semicolon (`;`). Whitespace and comments can be used to seperate keywords and identifiers, but are otherwise ignored.
 
 ## Whitespace
 Any space (` `), tab (`\t`), or new line (`\n`) is treated as whitespace, and will be ignored by the compiler. The compiler will see

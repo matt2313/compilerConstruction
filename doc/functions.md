@@ -1,4 +1,4 @@
-**[Functions](functions) / Functions**
+**[Index](index) / Functions**
 
 # Functions
 
@@ -38,4 +38,4 @@ bar("Hello, World!"); // function with 1 string argument
 foo2(12.0, 5.0); // function with 2 float arguments
 ```
 
-**IMPORTANT NOTE: Since the lexer doesn't store any information on what identifiers have been assigned, it will not notice an error if you try to access an unassigned function or use the wrong number of parameters when calling a function. It also cannot check if a return statement was provided**
+**IMPORTANT NOTE: Since the lexer doesn't store any information on what identifiers have been assigned, it will not notice an error if you try to access an unassigned function or use the wrong number of parameters when calling a function. It also cannot check if a return statement was provided.**
