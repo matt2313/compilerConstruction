@@ -12,6 +12,8 @@ For information on the syntax of MattC, see the following links:
 * [String Operations](stringOperations)
 * [Boolean Operations](booleanOperations)
 * [Comparison Operations](comparisonOperations)
+* [Variables](variables)
+* [Functions](functions)
 * [Input and Output Operations](ioOperations)
 
 ## Code examples

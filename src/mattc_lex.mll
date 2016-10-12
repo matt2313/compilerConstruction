@@ -9,7 +9,7 @@ let int = ['0'-'9']+
 let float_a = ['0'-'9']+ "." ['0'-'9']*
 let float_b = ['0'-'9']+ ("." ['0'-'9']*)? "f"
 let string = "\"" [^ '"']* "\""
-(* (['a'-'z']|['A'-'Z'])+ (['a'-'z']|['A'-'Z']|['0'-'9'])* *)
+let identifier = (['a'-'z' 'A'-'Z' '_']) (['0'-'9' 'a'-'z' 'A'-'Z' '_'])*
 let single_line_comment = "//" [^ '\n' '\r']*
 let not_eq = "!=" | "<>"
 
@@ -22,6 +22,12 @@ rule read = parse
     | float_a as value      { FLOAT_LITERAL (float_of_string value) }
     | float_b as value      { FLOAT_LITERAL (float_of_string (String.sub value 0 ((String.length value) - 1))) } (* The f isn't part of the float value *)
     | string as value       { STRING_LITERAL (String.sub value 1 ((String.length value) - 2)) } (* Don't count the opening and closing quotes as part of the value *)
+    | "true"                { BOOL_LITERAL (true) }
+    | "false"               { BOOL_LITERAL (false) }
+    | "int"                 { INT_TYPENAME }
+    | "float"               { FLOAT_TYPENAME }
+    | "bool"                { BOOL_TYPENAME }
+    | "string"              { STRING_TYPENAME }
     | "read_int"            { READ_INT }
     | "read_string"         { READ_STRING }
     | "print_int"           { PRINT_INT }
@@ -30,13 +36,14 @@ rule read = parse
     | "do"                  { DO }
     | "if"                  { IF }
     | "else"                { ELSE }
-    | "true"                { BOOL_LITERAL (true) }
-    | "false"               { BOOL_LITERAL (false) }
+    | "return"              { RETURN }
+    | ":="                  { ASSIGN }
     | "+"                   { PLUS }
     | "-"                   { MINUS }
     | "*"                   { MULTIPLY }
     | "/"                   { DIVIDE }
     | "^"                   { CONCAT }
+    | ","                   { SEPERATOR }
     | "AND"                 { AND }
     | "NAND"                { NAND }
     | "OR"                  { OR }
@@ -56,6 +63,7 @@ rule read = parse
     | "{"                   { OPBRACE }
     | "}"                   { CLBRACE }
     | eof                   { EOF }
+    | identifier as name    { IDENTIFIER name }
     | _                     { raise(SyntaxError("Unexpected character '" ^ Lexing.lexeme lexbuf ^ "'")) }
 
 (* Can't do this with a simple regular expression since we have to keep track of lines *)

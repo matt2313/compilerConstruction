@@ -48,6 +48,7 @@ Note that if there is an int expression to the left of the `-`, it will be evalu
 
 # Order of Precedence
 Numerical operations have the following precedence:
+
 1. Negation
 1. Division
 1. Multiplication

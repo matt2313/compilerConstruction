@@ -1,13 +1,6 @@
 /*
 TODO:
 
-Assign Variable
-    - This will mean making sure keywords have whitespace at the end
-Evaluate Variable
-
-Function Definition
-Function Application
-
 Change program to list of functions instead of list of commands
 
 Substring
@@ -30,6 +23,14 @@ New ... = ... in ...
 %token <bool> BOOL_LITERAL
 %token <string> STRING_LITERAL
 
+%token INT_TYPENAME
+%token FLOAT_TYPENAME
+%token BOOL_TYPENAME
+%token STRING_TYPENAME
+%token <string> IDENTIFIER  /* Name of a variable or function */
+%token ASSIGN               /* Assignment operator */
+%token RETURN               /* Return statement to be used in function definitions */
+
 %token OPBRACKET    /* Open bracket */
 %token CLBRACKET    /* Close bracket */
 %token OPBRACE      /* Open brace */
@@ -40,7 +41,7 @@ New ... = ... in ...
 %token READ_FLOAT   /* Get float form terminal */
 %token PRINT_INT    /* Print int to terminal */
 %token PRINT_STRING /* Print string to terminal */
-%token PRINT_FLOAT /* Print float to terminal */
+%token PRINT_FLOAT  /* Print float to terminal */
 
 %token NEGATE       /* Make a number negative */
 %token PLUS         /* Addition of 2 expressions */
@@ -71,10 +72,14 @@ New ... = ... in ...
 %token WHILE        /* Condition for while and do while loops */
 %token DO           /* Used to specify start of a do while loop */
 
+%token SEPERATOR    /* Seperator for lists of expressions */
 %token EOE          /* End of expression */
 %token EOF          /* End of file*/
 
-%left AND           /* Lowest precedence */
+%right RETURN       /* Lowest precedence */
+%right ASSIGN
+
+%left AND
 %left NAND
 %left OR
 %left XOR
@@ -120,6 +125,8 @@ statement:
     | exp EOE                           { $1 }
     | while_loop                        { $1 }
     | if_statement                      { $1 }
+    | function_definition               { $1 }
+    | return_statement EOE              { $1 }
 ;
 
 exp:
@@ -140,16 +147,48 @@ if_statement:
     | IF exp_bool scoped_statement_list ELSE scoped_statement_list  { (string_of_bool $2)::$3@$5 }
 ;
 
+function_definition:
+    | INT_TYPENAME IDENTIFIER bracketed_arg_list scoped_statement_list      { $2::$3@$4 }
+    | FLOAT_TYPENAME IDENTIFIER bracketed_arg_list scoped_statement_list    { $2::$3@$4 }
+    | BOOL_TYPENAME IDENTIFIER bracketed_arg_list scoped_statement_list     { $2::$3@$4 }
+    | STRING_TYPENAME IDENTIFIER bracketed_arg_list scoped_statement_list   { $2::$3@$4 }
+;
+
+bracketed_arg_list:
+    | OPBRACKET CLBRACKET               { ["noargs"] }
+    | OPBRACKET arg_list CLBRACKET      { $2 }
+;
+
+arg_list:
+    | INT_TYPENAME IDENTIFIER               { [$2] }
+    | FLOAT_TYPENAME IDENTIFIER             { [$2] }
+    | BOOL_TYPENAME IDENTIFIER              { [$2] }
+    | STRING_TYPENAME IDENTIFIER            { [$2] }
+    | INT_TYPENAME IDENTIFIER SEPERATOR arg_list    { $2::$4 }
+    | FLOAT_TYPENAME IDENTIFIER SEPERATOR arg_list  { $2::$4 }
+    | BOOL_TYPENAME IDENTIFIER SEPERATOR arg_list   { $2::$4 }
+    | STRING_TYPENAME IDENTIFIER SEPERATOR arg_list { $2::$4 }
+;
+
+return_statement:
+    | RETURN exp_int                    { [string_of_int $2] }
+    | RETURN exp_float                  { [string_of_float $2] }
+    | RETURN exp_bool                   { [string_of_bool $2] }
+    | RETURN exp_string                 { [$2] }
+;
+
 io_operation:
     | PRINT_INT OPBRACKET exp_int CLBRACKET         { [string_of_int $3] }
     | PRINT_STRING OPBRACKET exp_string CLBRACKET   { [$3] }
 ;
 
 exp_int:
-    | OPBRACKET exp_int CLBRACKET       { $2 }
-    | INT_LITERAL                       { $1 }
-    | operation_int                     { $1 }
-    | READ_INT OPBRACKET CLBRACKET      { 0 }
+    | OPBRACKET exp_int CLBRACKET            { $2 }
+    | INT_LITERAL                            { $1 }
+    | operation_int                          { $1 }
+    | READ_INT OPBRACKET CLBRACKET           { 0 }
+    | INT_TYPENAME IDENTIFIER ASSIGN exp_int { $4 }
+    | IDENTIFIER ASSIGN exp_int              { $3 }
 ;
 
 exp_float:
@@ -157,18 +196,24 @@ exp_float:
     | FLOAT_LITERAL                     { $1 }
     | operation_float                   { $1 }
     | READ_FLOAT OPBRACKET CLBRACKET    { 0.0 }
+    | FLOAT_TYPENAME IDENTIFIER ASSIGN exp_float    { $4 }
+    | IDENTIFIER ASSIGN exp_float       { $3 }
 ;
 
 exp_bool:
     | OPBRACKET exp_bool CLBRACKET      { $2 }
     | BOOL_LITERAL                      { $1 }
     | operation_bool                    { $1 }
+    | BOOL_TYPENAME IDENTIFIER ASSIGN exp_bool      { $4 }
+    | IDENTIFIER ASSIGN exp_bool        { $3 }
 ;
 
 exp_string:
     | OPBRACKET exp_string CLBRACKET    { $2 }
     | STRING_LITERAL                    { $1 }
     | operation_string                  { $1 }
+    | STRING_TYPENAME IDENTIFIER ASSIGN exp_string  { $4 }
+    | IDENTIFIER ASSIGN exp_string      { $3 }
 ;
 
 operation_int:
@@ -180,11 +225,14 @@ operation_int:
 ;
 
 operation_float:
-    | exp_float PLUS exp_float         { $1 +. $3 }
-    | exp_float MINUS exp_float        { $1 -. $3 }
-    | MINUS exp_float %prec NEGATE     { -.$2 }
-    | exp_float MULTIPLY exp_float     { $1 *. $3 }
-    | exp_float DIVIDE exp_float       { $1 /. $3 }
+    | exp_float PLUS exp_float          { $1 +. $3 }
+    | exp_float MINUS exp_float         { $1 -. $3 }
+    | MINUS exp_float %prec NEGATE      { -.$2 }
+    | exp_float MULTIPLY exp_float      { $1 *. $3 }
+    | exp_float DIVIDE exp_float        { $1 /. $3 }
+    /* For now, assume all variables and functions are floats (since we can't actually check) */
+    | IDENTIFIER                        { 0.0 }
+    | IDENTIFIER bracketed_arg_list     { 0.0 }
 ;
 
 operation_bool:
