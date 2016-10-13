@@ -146,6 +146,10 @@ if_statement:
     | IF exp_bool scoped_statement_list                             { (string_of_bool $2)::$3 }
     | IF exp_bool scoped_statement_list ELSE scoped_statement_list  { (string_of_bool $2)::$3@$5 }
     | IF exp_bool scoped_statement_list ELSE if_statement           { (string_of_bool $2)::$3@$5 }
+    
+    | IF exp_identifier scoped_statement_list                             { $3 }
+    | IF exp_identifier scoped_statement_list ELSE scoped_statement_list  { $3@$5 }
+    | IF exp_identifier scoped_statement_list ELSE if_statement           { $3@$5 }
 ;
 
 let_statement:
