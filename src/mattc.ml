@@ -2,7 +2,7 @@ open Mattc_par
 open Mattc_lex
 open Lexing
 
-(* At the moment we assume we've been given a single input file *)
+let verbose = ref false
 
 let getPosition lexbuf =
     let pos = lexbuf.lex_curr_p in
@@ -22,17 +22,26 @@ let parseWithErrors lexbuf =
                              exit (-1)
                              
 let parseWithoutErrors = (Mattc_par.start Mattc_lex.read)
-    
+
+let parseFile filename =
+    let fileIn = open_in filename in
+    Lexing.from_channel fileIn
+    |> parseWithErrors
+    |> ignore;  (* We don't want to do anything with the string we got from parsing *)
+    close_in fileIn;
+    print_endline ("File '" ^ filename ^ "' parsed correctly")
+
+let parseFile_verbose filename =
+    let fileIn = open_in filename in
+    Lexing.from_channel fileIn
+    |> parseWithErrors
+    |> String.concat "\n"
+    |> print_endline;
+    close_in fileIn;
+    print_endline ("File '" ^ filename ^ "' parsed correctly")
+
 let _ =
-    let argc = Array.length Sys.argv in
-    (* Note that the 1st argument is the name of the program itself, which we ignore *)
-    if argc = 2
-    then let fileIn = open_in (Array.get Sys.argv 1) in
-        Lexing.from_channel fileIn
-        |> parseWithErrors
-        (* This only works if we know every line evaluates to a string *)
-        |> String.concat "\n"
-        |> print_endline;
-        close_in fileIn;
-        print_endline "File parsed correctly!";
-    else print_endline ("Error! Expected 1 argument but got " ^ string_of_int (argc - 1))
+    let specList = [("-v", Arg.Set verbose, "Prints evaluations of lines as they are parsed")] in
+    let anon_func = if !verbose then parseFile_verbose else parseFile in
+    let usageMessage = "Compiles MattC Programs" in
+    Arg.parse specList anon_func usageMessage

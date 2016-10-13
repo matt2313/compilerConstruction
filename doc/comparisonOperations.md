@@ -5,7 +5,7 @@
 All comparison operations can be performed on `int` and `float` expressions, and always return a `bool`.
 
 ## Equal and Not Equal
-The `=` operator returns 'true' if boths its operands have the same value, and 'false' otherwise. It has an inverse operation, `!=`.
+The `==` operator returns 'true' if boths its operands have the same value, and 'false' otherwise. It has an inverse operation, `!=`.
 ```
 5 == 3 + 2; // true
 2 == 1; // false

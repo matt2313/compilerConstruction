@@ -8,4 +8,3 @@ ocamlc -c mattc_lex.ml
 ocamlc -c mattc.ml
 ocamlc -o mattc.exe mattc_lex.cmo mattc_par.cmo mattc.cmo
 echo Compilation Complete
-pause
