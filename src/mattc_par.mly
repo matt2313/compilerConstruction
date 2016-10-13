@@ -1,17 +1,16 @@
 /*
 TODO:
 
-Type conversions
-
-Char datatype
-Read Char
-Print Char
+Let ... = ... in ...
+New ... = ... in ...
 
 For Loop
 IF ELSE-IF ... ELSE
 
-Let ... = ... in ...
-New ... = ... in ...
+Char datatype
+Read Char
+Print Char
+char conversions
 */
 
 %token <int> INT_LITERAL
@@ -26,6 +25,7 @@ New ... = ... in ...
 %token <string> IDENTIFIER  /* Name of a variable or function */
 %token ASSIGN               /* Assignment operator */
 %token RETURN               /* Return statement to be used in function definitions */
+%token CAST                 /* Explicitly cast expression to another type */
 
 %token OPBRACKET    /* Open bracket */
 %token CLBRACKET    /* Close bracket */
@@ -76,6 +76,8 @@ New ... = ... in ...
 
 %right RETURN       /* Lowest precedence */
 %right ASSIGN
+
+%left CAST
 
 %left AND
 %left NAND
@@ -186,12 +188,16 @@ io_operation:
 ;
 
 exp_int:
-    | OPBRACKET exp_int CLBRACKET            { $2 }
-    | INT_LITERAL                            { $1 }
-    | operation_int                          { $1 }
-    | READ_INT OPBRACKET CLBRACKET           { 0 }
-    | INT_TYPENAME IDENTIFIER ASSIGN exp_int { $4 }
-    | IDENTIFIER ASSIGN exp_int              { $3 }
+    | OPBRACKET exp_int CLBRACKET               { $2 }
+    | INT_LITERAL                               { $1 }
+    | operation_int                             { $1 }
+    | READ_INT OPBRACKET CLBRACKET              { 0 }
+    | INT_TYPENAME IDENTIFIER ASSIGN exp_int    { $4 }
+    | IDENTIFIER ASSIGN exp_int                 { $3 }
+    
+    | exp_float CAST INT_TYPENAME               { int_of_float $1 }
+    | exp_bool CAST INT_TYPENAME                { if $1 then 1 else 0 }
+    | exp_string CAST INT_TYPENAME              { int_of_string $1 }
 ;
 
 exp_float:
@@ -201,6 +207,10 @@ exp_float:
     | READ_FLOAT OPBRACKET CLBRACKET    { 0.0 }
     | FLOAT_TYPENAME IDENTIFIER ASSIGN exp_float    { $4 }
     | IDENTIFIER ASSIGN exp_float       { $3 }
+    
+    | exp_int CAST FLOAT_TYPENAME       { float_of_int $1 }
+    | exp_bool CAST FLOAT_TYPENAME      { if $1 then 1.0 else 0.0 }
+    | exp_string CAST FLOAT_TYPENAME    { float_of_string $1 }
 ;
 
 exp_bool:
@@ -209,6 +219,10 @@ exp_bool:
     | operation_bool                    { $1 }
     | BOOL_TYPENAME IDENTIFIER ASSIGN exp_bool      { $4 }
     | IDENTIFIER ASSIGN exp_bool        { $3 }
+    
+    | exp_int CAST BOOL_TYPENAME        { if $1 = 1 then true else false }
+    | exp_float CAST BOOL_TYPENAME      { if $1 = 1.0 then true else false }
+    | exp_string CAST BOOL_TYPENAME     { if $1 = "true" then true else (if $1 = "false" then false else false) }
 ;
 
 exp_string:
@@ -217,6 +231,10 @@ exp_string:
     | operation_string                  { $1 }
     | STRING_TYPENAME IDENTIFIER ASSIGN exp_string  { $4 }
     | IDENTIFIER ASSIGN exp_string      { $3 }
+    
+    | exp_int CAST STRING_TYPENAME      { string_of_int $1 }
+    | exp_float CAST STRING_TYPENAME    { string_of_float $1 }
+    | exp_bool CAST STRING_TYPENAME     { string_of_bool $1 }
 ;
 
 operation_int:
@@ -235,6 +253,17 @@ operation_float:
     | MINUS exp_float %prec NEGATE      { -.$2 }
     | exp_float MULTIPLY exp_float      { $1 *. $3 }
     | exp_float DIVIDE exp_float        { $1 /. $3 }
+    
+    | exp_float PLUS exp_int            { $1 +. float_of_int $3 }
+    | exp_float MINUS exp_int           { $1 -. float_of_int $3 }
+    | exp_float MULTIPLY exp_int        { $1 *. float_of_int $3 }
+    | exp_float DIVIDE exp_int          { $1 /. float_of_int $3 }
+    
+    | exp_int PLUS exp_float            { float_of_int $1 +. $3 }
+    | exp_int MINUS exp_float           { float_of_int $1 -. $3 }
+    | exp_int MULTIPLY exp_float        { float_of_int $1 *. $3 }
+    | exp_int DIVIDE exp_float          { float_of_int $1 /. $3 }
+    
     /* For now, assume all variables and functions are floats (since we can't actually check) */
     | IDENTIFIER                        { 0.0 }
     | IDENTIFIER bracketed_param_list   { 0.0 }
@@ -274,6 +303,20 @@ operation_bool:
     | exp_float G_THAN_EQ exp_float     { $1 >= $3 }
     | exp_float NOT_EQ exp_float        { not ($1 = $3) }
     | exp_float EQ exp_float            { $1 = $3 }
+    
+    | exp_float L_THAN exp_int          { $1 < float_of_int $3 }
+    | exp_float G_THAN exp_int          { $1 > float_of_int $3 }
+    | exp_float L_THAN_EQ exp_int       { $1 <= float_of_int $3 }
+    | exp_float G_THAN_EQ exp_int       { $1 >= float_of_int $3 }
+    | exp_float NOT_EQ exp_int          { not ($1 = float_of_int $3) }
+    | exp_float EQ exp_int              { $1 = float_of_int $3 }
+    
+    | exp_int L_THAN exp_float          { float_of_int $1 < $3 }
+    | exp_int G_THAN exp_float          { float_of_int $1 > $3 }
+    | exp_int L_THAN_EQ exp_float       { float_of_int $1 <= $3 }
+    | exp_int G_THAN_EQ exp_float       { float_of_int $1 >= $3 }
+    | exp_int NOT_EQ exp_float          { not (float_of_int $1 = $3) }
+    | exp_int EQ exp_float              { float_of_int $1 = $3 }
 ;
 
 operation_string:

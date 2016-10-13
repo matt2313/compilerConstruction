@@ -28,6 +28,7 @@ rule read = parse
     | "float"               { FLOAT_TYPENAME }
     | "bool"                { BOOL_TYPENAME }
     | "string"              { STRING_TYPENAME }
+    | "as"                  { CAST }
     | "read_int"            { READ_INT }
     | "read_string"         { READ_STRING }
     | "print_int"           { PRINT_INT }

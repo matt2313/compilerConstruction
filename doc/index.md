@@ -18,8 +18,12 @@ For information on the syntax of MattC, see the following links:
 
 ## Code examples
 Code examples can be found in the `/examples/` folder
-* `basicArithmetic.mc` shows how to perform `int` operations and use comments
-* `basicLogic.mc` shows how to use `bool` operations
+* `ints.mc` shows how to perform `int` operations and use comments
+* `bools.mc` shows how to use `bool` operations
 * `controlFlow.mc` shows how to use loops and `if` statements
-* `ioAndStrings.mc` shows how to get user input, display messages to the user, and how to use the `string` type
+* `io.mc` shows how to get user input and display messages to the user
+* `strings.mc` shows how to use the `string` type
 * `floats.mc` shows how to use the `float` datatype
+* `variables.mc` shows how to declare and evaluate variables
+* `functions.mc` shows how to define and call functions
+* `casts.mc` shows how to convert expressions to other datatypes
