@@ -9,7 +9,7 @@ int main()
     myFloat * 10;
     
     let string myString := "Hello World!" in
-    print_string(myString as string);
+    print_string(myString);
     
     let int ret := 0 in
     return ret;
@@ -26,15 +26,13 @@ int main()
     
     let bool g := true in
     new bool h := false in
-    //g OR h;
-    g + h;
+    g OR h;
     
     let string i := "Page: " in
     new int j := 10 in
     let string k := ", Line: " in
     new int l := 15 in
-    //i ^ (j as string) ^ k ^ (l as string);
-    i + j - k * l;
+    i ^ (j as string) ^ k ^ (l as string);
 }
 
 let int x := 5 in

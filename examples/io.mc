@@ -12,5 +12,10 @@ int main()
     print_string("Hello World!");
     print_string("Hello " ^ "World!");
     
+    read_float();
+    read_bool();
+    print_float(3.14);
+    print_bool(true);
+    
     return 0;
 }

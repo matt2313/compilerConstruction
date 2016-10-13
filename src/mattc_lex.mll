@@ -33,8 +33,12 @@ rule read = parse
     | "new"                 { NEW }
     | "in"                  { IN }
     | "read_int"            { READ_INT }
+    | "read_float"          { READ_FLOAT }
+    | "read_bool"           { READ_BOOL }
     | "read_string"         { READ_STRING }
     | "print_int"           { PRINT_INT }
+    | "print_float"         { PRINT_FLOAT }
+    | "print_bool"          { PRINT_BOOL }
     | "print_string"        { PRINT_STRING }
     | "substring"           { SUBSTRING }
     | "length"              { LENGTH }

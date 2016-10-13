@@ -94,6 +94,32 @@ int main()
         }
     }
     while true;
+    
+    if(true)
+    {
+        1;
+    }
+    else if(false)
+    {
+        2;
+    }
+    else if(true)
+    {
+        3;
+    }
+    else
+    {
+        4;
+    }
+    
+    if(true)
+    {
+        1;
+    }
+    else if(false)
+    {
+        2;
+    }
         
     return 0;
 }
