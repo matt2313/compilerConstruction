@@ -27,3 +27,4 @@ Code examples can be found in the `/examples/` folder
 * `variables.mc` shows how to declare and evaluate variables
 * `functions.mc` shows how to define and call functions
 * `casts.mc` shows how to convert expressions to other datatypes
+* `letNew.mc` shows how to use `let` and `new` syntax

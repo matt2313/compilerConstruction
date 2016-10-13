@@ -29,6 +29,9 @@ rule read = parse
     | "bool"                { BOOL_TYPENAME }
     | "string"              { STRING_TYPENAME }
     | "as"                  { CAST }
+    | "let"                 { LET }
+    | "new"                 { NEW }
+    | "in"                  { IN }
     | "read_int"            { READ_INT }
     | "read_string"         { READ_STRING }
     | "print_int"           { PRINT_INT }

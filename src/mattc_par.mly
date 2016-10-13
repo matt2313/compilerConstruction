@@ -1,18 +1,3 @@
-/*
-TODO:
-
-Let ... = ... in ...
-New ... = ... in ...
-
-For Loop
-IF ELSE-IF ... ELSE
-
-Char datatype
-Read Char
-Print Char
-char conversions
-*/
-
 %token <int> INT_LITERAL
 %token <float> FLOAT_LITERAL
 %token <bool> BOOL_LITERAL
@@ -26,6 +11,9 @@ char conversions
 %token ASSIGN               /* Assignment operator */
 %token RETURN               /* Return statement to be used in function definitions */
 %token CAST                 /* Explicitly cast expression to another type */
+%token LET
+%token NEW
+%token IN
 
 %token OPBRACKET    /* Open bracket */
 %token CLBRACKET    /* Close bracket */
@@ -114,6 +102,8 @@ start:
 
 function_list:
     | function_definition               { $1 }
+    | let_statement function_list       { $1@$2 }
+    | new_statement function_list       { $1@$2 }
     | function_definition function_list { $1@$2 }
 ;
 
@@ -132,6 +122,8 @@ statement:
     | if_statement                      { $1 }
     | function_definition               { $1 }
     | return_statement EOE              { $1 }
+    | let_statement statement           { $1@$2 }
+    | new_statement statement           { $1@$2 }
 ;
 
 exp:
@@ -150,6 +142,21 @@ while_loop:
 if_statement:
     | IF exp_bool scoped_statement_list                             { (string_of_bool $2)::$3 }
     | IF exp_bool scoped_statement_list ELSE scoped_statement_list  { (string_of_bool $2)::$3@$5 }
+;
+
+let_statement:
+    | LET INT_TYPENAME IDENTIFIER ASSIGN exp_int IN         { $3::[string_of_int $5] }
+    | LET FLOAT_TYPENAME IDENTIFIER ASSIGN exp_float IN     { $3::[string_of_float $5]}
+    | LET BOOL_TYPENAME IDENTIFIER ASSIGN exp_bool IN       { $3::[string_of_bool $5] }
+    | LET STRING_TYPENAME IDENTIFIER ASSIGN exp_string IN   { $3::[$5] }
+;
+
+new_statement:
+    | NEW INT_TYPENAME IDENTIFIER ASSIGN exp_int IN         { $3::[string_of_int $5] }
+    | NEW FLOAT_TYPENAME IDENTIFIER ASSIGN exp_float IN     { $3::[string_of_float $5] }
+    | NEW FLOAT_TYPENAME IDENTIFIER ASSIGN exp_int IN       { $3::[string_of_int $5] }
+    | NEW BOOL_TYPENAME IDENTIFIER ASSIGN exp_bool IN       { $3::[string_of_bool $5] }
+    | NEW STRING_TYPENAME IDENTIFIER ASSIGN exp_string IN   { $3::[$5] }
 ;
 
 function_definition:
@@ -195,6 +202,7 @@ exp_int:
     | INT_TYPENAME IDENTIFIER ASSIGN exp_int    { $4 }
     | IDENTIFIER ASSIGN exp_int                 { $3 }
     
+    | exp_int CAST INT_TYPENAME                 { $1 }
     | exp_float CAST INT_TYPENAME               { int_of_float $1 }
     | exp_bool CAST INT_TYPENAME                { if $1 then 1 else 0 }
     | exp_string CAST INT_TYPENAME              { int_of_string $1 }
@@ -206,8 +214,10 @@ exp_float:
     | operation_float                   { $1 }
     | READ_FLOAT OPBRACKET CLBRACKET    { 0.0 }
     | FLOAT_TYPENAME IDENTIFIER ASSIGN exp_float    { $4 }
+    | FLOAT_TYPENAME IDENTIFIER ASSIGN exp_int      { float_of_int $4 }
     | IDENTIFIER ASSIGN exp_float       { $3 }
     
+    | exp_float CAST FLOAT_TYPENAME     { $1 }
     | exp_int CAST FLOAT_TYPENAME       { float_of_int $1 }
     | exp_bool CAST FLOAT_TYPENAME      { if $1 then 1.0 else 0.0 }
     | exp_string CAST FLOAT_TYPENAME    { float_of_string $1 }
@@ -220,6 +230,7 @@ exp_bool:
     | BOOL_TYPENAME IDENTIFIER ASSIGN exp_bool      { $4 }
     | IDENTIFIER ASSIGN exp_bool        { $3 }
     
+    | exp_bool CAST BOOL_TYPENAME       { $1 }
     | exp_int CAST BOOL_TYPENAME        { if $1 = 1 then true else false }
     | exp_float CAST BOOL_TYPENAME      { if $1 = 1.0 then true else false }
     | exp_string CAST BOOL_TYPENAME     { if $1 = "true" then true else (if $1 = "false" then false else false) }
@@ -232,6 +243,7 @@ exp_string:
     | STRING_TYPENAME IDENTIFIER ASSIGN exp_string  { $4 }
     | IDENTIFIER ASSIGN exp_string      { $3 }
     
+    | exp_string CAST STRING_TYPENAME   { $1 }
     | exp_int CAST STRING_TYPENAME      { string_of_int $1 }
     | exp_float CAST STRING_TYPENAME    { string_of_float $1 }
     | exp_bool CAST STRING_TYPENAME     { string_of_bool $1 }
@@ -267,16 +279,6 @@ operation_float:
     /* For now, assume all variables and functions are floats (since we can't actually check) */
     | IDENTIFIER                        { 0.0 }
     | IDENTIFIER bracketed_param_list   { 0.0 }
-;
-
-bracketed_param_list:
-    | OPBRACKET CLBRACKET               { 0.0 }
-    | OPBRACKET param_list CLBRACKET    { 0.0 }
-;
-
-param_list:
-    | exp                               { 0.0 }
-    | exp SEPERATOR param_list          { 0.0 }
 ;
 
 operation_bool:
@@ -323,4 +325,14 @@ operation_string:
     | exp_string CONCAT exp_string      { $1 ^ $3 }
     | READ_STRING OPBRACKET CLBRACKET   { "" }
     | SUBSTRING OPBRACKET exp_string SEPERATOR exp_int SEPERATOR exp_int CLBRACKET  { String.sub $3 $5 $7 }
+;
+
+bracketed_param_list:
+    | OPBRACKET CLBRACKET               { 0.0 }
+    | OPBRACKET param_list CLBRACKET    { 0.0 }
+;
+
+param_list:
+    | exp                               { 0.0 }
+    | exp SEPERATOR param_list          { 0.0 }
 ;
