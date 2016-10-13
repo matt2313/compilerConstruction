@@ -32,6 +32,8 @@ rule read = parse
     | "read_string"         { READ_STRING }
     | "print_int"           { PRINT_INT }
     | "print_string"        { PRINT_STRING }
+    | "substring"           { SUBSTRING }
+    | "length"              { LENGTH }
     | "while"               { WHILE }
     | "do"                  { DO }
     | "if"                  { IF }

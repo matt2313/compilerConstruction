@@ -1,8 +1,6 @@
 /*
 TODO:
 
-Substring
-
 Type conversions
 
 Char datatype
@@ -55,6 +53,8 @@ New ... = ... in ...
 %token NOT_EQ       /* Not equal comparison */
 
 %token CONCAT       /* String concatonation */
+%token SUBSTRING    /* Substring operator */
+%token LENGTH       /* Returns the length of a string */
 
 %token AND          /* 'and' boolean operator */
 %token OR           /* Inclusive 'or' boolean operator */
@@ -225,6 +225,8 @@ operation_int:
     | MINUS exp_int %prec NEGATE        { -$2 }
     | exp_int MULTIPLY exp_int          { $1 * $3 }
     | exp_int DIVIDE exp_int            { $1 / $3 }
+    
+    | LENGTH OPBRACKET exp_string CLBRACKET { String.length $3 }
 ;
 
 operation_float:
@@ -277,4 +279,5 @@ operation_bool:
 operation_string:
     | exp_string CONCAT exp_string      { $1 ^ $3 }
     | READ_STRING OPBRACKET CLBRACKET   { "" }
+    | SUBSTRING OPBRACKET exp_string SEPERATOR exp_int SEPERATOR exp_int CLBRACKET  { String.sub $3 $5 $7 }
 ;
