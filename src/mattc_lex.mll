@@ -73,7 +73,7 @@ rule read = parse
     | "{"                   { OPBRACE }
     | "}"                   { CLBRACE }
     | eof                   { EOF }
-    | identifier as name    { IDENTIFIER name }
+    | identifier as name    { IDENTIFIER (name) }
     | _                     { raise(SyntaxError("Unexpected character '" ^ Lexing.lexeme lexbuf ^ "'")) }
 
 (* Can't do this with a simple regular expression since we have to keep track of lines *)

@@ -17,7 +17,7 @@ let parseWithErrors filename lexbuf =
     | Parsing.Parse_error -> prerr_string("Parse error in '" ^ filename ^ "' at " ^ getPosition lexbuf);
                              exit (-1)
                              
-let parseWithoutErrors = (Mattc_par.start Mattc_lex.read)
+let parseWithoutErrors = Mattc_par.start Mattc_lex.read
 
 let parseFile_quiet filename =
     let fileIn = open_in filename in
@@ -25,8 +25,9 @@ let parseFile_quiet filename =
     |> parseWithErrors filename
     |> ignore;  (* We don't want to do anything with the string we got from parsing *)
     close_in fileIn;
-    print_endline ("File '" ^ filename ^ "' parsed correctly")
+    print_endline ("File '" ^ filename ^ "' parsed correctly with value: ?")
 
+(*
 let parseFile_verbose filename =
     let fileIn = open_in filename in
     Lexing.from_channel fileIn
@@ -34,7 +35,9 @@ let parseFile_verbose filename =
     |> String.concat "\n"
     |> print_endline;
     close_in fileIn;
-    print_endline ("File '" ^ filename ^ "' parsed correctly")
+    print_endline ("File '" ^ filename ^ "' parsed correctly with value: ?")
+*)
+let parseFile_verbose = parseFile_quiet
     
 let parseFile filename =
     if !verbose

@@ -1,5 +1,6 @@
 #!/bin/bash
 # This script builds the binaries for the MattC compiler
+ocamlc -c parseTreeType.ml
 ocamllex mattc_lex.mll
 ocamlyacc -v mattc_par.mly
 ocamlc -c mattc_par.mli

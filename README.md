@@ -6,7 +6,7 @@ Repository for the source files and documentation of the MattC compiler, created
 ## Contents
 
 - An `/srs/` folder that holds the source files for the compiler (`mattc_par.mly`, `mattc_lex.mly`, `mattc.ml`), as well as scripts to compile the compiler (`build_mattc.sh`, `build_mattc.bat`)
-- An `/examples/` folder containing test programs that demonstrate code written in MattC
+- A `/test/` folder containing test programs that demonstrate code written in MattC
 - A `/doc/` folder containing documentation on how to write MattC code
 
 
@@ -38,4 +38,4 @@ For complete documentation on the syntax, view `/doc/index.md` or look at the ex
 
 ## Test Code
 
-Test code can be found in the `/examples/` directory. There is also a script that will run all the test files in one go: `test_mattc.bat` on windows and `test_mattc.sh` on unix.
+Test code can be found in the `/test/` directory. There is also a script for each part that will run all the test files in one go in each part's respective folder.
