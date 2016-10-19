@@ -1,10 +1,3 @@
-/*
-TODO:
-- Copy language into parse tree type
-- Change actions to return parse tree instead of string list
-- Create method to print parse tree
-*/
-
 %{
     open ParseTreeType
 %}
@@ -164,29 +157,29 @@ if_statement:
 ;
 
 let_statement:
-    | LET INT_TYPENAME IDENTIFIER ASSIGN exp_int IN         { Let_Statement }
-    | LET FLOAT_TYPENAME IDENTIFIER ASSIGN exp_float IN     { Let_Statement }
-    | LET FLOAT_TYPENAME IDENTIFIER ASSIGN exp_int IN       { Let_Statement }
-    | LET BOOL_TYPENAME IDENTIFIER ASSIGN exp_bool IN       { Let_Statement }
-    | LET STRING_TYPENAME IDENTIFIER ASSIGN exp_string IN   { Let_Statement }
+    | LET INT_TYPENAME IDENTIFIER ASSIGN exp_int IN         { Let_Statement_Int(Identifier_Declaration(Int, $3), $5) }
+    | LET FLOAT_TYPENAME IDENTIFIER ASSIGN exp_float IN     { Let_Statement_Float(Identifier_Declaration(Float, $3), $5) }
+    | LET FLOAT_TYPENAME IDENTIFIER ASSIGN exp_int IN       { Let_Statement_Float(Identifier_Declaration(Float, $3), Expression_Int_To_Float($5)) }
+    | LET BOOL_TYPENAME IDENTIFIER ASSIGN exp_bool IN       { Let_Statement_Bool(Identifier_Declaration(Bool, $3), $5) }
+    | LET STRING_TYPENAME IDENTIFIER ASSIGN exp_string IN   { Let_Statement_String(Identifier_Declaration(String, $3), $5) }
     
-    | LET INT_TYPENAME IDENTIFIER ASSIGN exp_identifier IN      { Let_Statement }
-    | LET FLOAT_TYPENAME IDENTIFIER ASSIGN exp_identifier IN    { Let_Statement }
-    | LET BOOL_TYPENAME IDENTIFIER ASSIGN exp_identifier IN     { Let_Statement }
-    | LET STRING_TYPENAME IDENTIFIER ASSIGN exp_identifier IN   { Let_Statement }
+    | LET INT_TYPENAME IDENTIFIER ASSIGN exp_identifier IN      { Let_Statement_Identifier(Identifier_Declaration(Int, $3), $5) }
+    | LET FLOAT_TYPENAME IDENTIFIER ASSIGN exp_identifier IN    { Let_Statement_Identifier(Identifier_Declaration(Float, $3), $5) }
+    | LET BOOL_TYPENAME IDENTIFIER ASSIGN exp_identifier IN     { Let_Statement_Identifier(Identifier_Declaration(Bool, $3), $5) }
+    | LET STRING_TYPENAME IDENTIFIER ASSIGN exp_identifier IN   { Let_Statement_Identifier(Identifier_Declaration(String, $3), $5) }
 ;
 
 new_statement:
-    | NEW INT_TYPENAME IDENTIFIER ASSIGN exp_int IN         { New_Statement }
-    | NEW FLOAT_TYPENAME IDENTIFIER ASSIGN exp_float IN     { New_Statement }
-    | NEW FLOAT_TYPENAME IDENTIFIER ASSIGN exp_int IN       { New_Statement }
-    | NEW BOOL_TYPENAME IDENTIFIER ASSIGN exp_bool IN       { New_Statement }
-    | NEW STRING_TYPENAME IDENTIFIER ASSIGN exp_string IN   { New_Statement }
+    | NEW INT_TYPENAME IDENTIFIER ASSIGN exp_int IN         { New_Statement_Int(Identifier_Declaration(Int, $3), $5) }
+    | NEW FLOAT_TYPENAME IDENTIFIER ASSIGN exp_float IN     { New_Statement_Float(Identifier_Declaration(Float, $3), $5) }
+    | NEW FLOAT_TYPENAME IDENTIFIER ASSIGN exp_int IN       { New_Statement_Float(Identifier_Declaration(Float, $3), Expression_Int_To_Float($5)) }
+    | NEW BOOL_TYPENAME IDENTIFIER ASSIGN exp_bool IN       { New_Statement_Bool(Identifier_Declaration(Bool, $3), $5) }
+    | NEW STRING_TYPENAME IDENTIFIER ASSIGN exp_string IN   { New_Statement_String(Identifier_Declaration(String, $3), $5) }
     
-    | NEW INT_TYPENAME IDENTIFIER ASSIGN exp_identifier IN      { New_Statement }
-    | NEW FLOAT_TYPENAME IDENTIFIER ASSIGN exp_identifier IN    { New_Statement }
-    | NEW BOOL_TYPENAME IDENTIFIER ASSIGN exp_identifier IN     { New_Statement }
-    | NEW STRING_TYPENAME IDENTIFIER ASSIGN exp_identifier IN   { New_Statement }
+    | NEW INT_TYPENAME IDENTIFIER ASSIGN exp_identifier IN      { New_Statement_Identifier(Identifier_Declaration(Int, $3), $5) }
+    | NEW FLOAT_TYPENAME IDENTIFIER ASSIGN exp_identifier IN    { New_Statement_Identifier(Identifier_Declaration(Float, $3), $5) }
+    | NEW BOOL_TYPENAME IDENTIFIER ASSIGN exp_identifier IN     { New_Statement_Identifier(Identifier_Declaration(Bool, $3), $5) }
+    | NEW STRING_TYPENAME IDENTIFIER ASSIGN exp_identifier IN   { New_Statement_Identifier(Identifier_Declaration(String, $3), $5) }
 ;
 
 function_definition:
@@ -338,9 +331,9 @@ operation_int:
 
 operation_float:
     | exp_float PLUS exp_float          { Operation_Float_Plus_Float($1, $3) }
-    | exp_float MINUS exp_float         { Operation_Float_Plus_Float($1, $3) }
-    | exp_float MULTIPLY exp_float      { Operation_Float_Plus_Float($1, $3) }
-    | exp_float DIVIDE exp_float        { Operation_Float_Plus_Float($1, $3) }
+    | exp_float MINUS exp_float         { Operation_Float_Minus_Float($1, $3) }
+    | exp_float MULTIPLY exp_float      { Operation_Float_Multiply_Float($1, $3) }
+    | exp_float DIVIDE exp_float        { Operation_Float_Divide_Float($1, $3) }
     | MINUS exp_float %prec NEGATE      { Operation_Negate_Float($2) }
     
     | exp_float PLUS exp_int            { Operation_Float_Plus_Float($1, Expression_Int_To_Float($3)) }
@@ -394,39 +387,39 @@ operation_bool:
     | exp_identifier EQ exp_bool        { Operation_Identifier_Eq_Bool($1, $3) }
     
 
-    | exp_int L_THAN exp_int            { Operation_Int_Greater_Than_Int($1, $3) }
-    | exp_int G_THAN exp_int            { Operation_Int_Less_Than_Int($1, $3) }
-    | exp_int L_THAN_EQ exp_int         { Operation_Int_Greater_Than_Or_Eq_Int($1, $3) }
-    | exp_int G_THAN_EQ exp_int         { Operation_Int_Less_Than_Or_Eq_Int($1, $3) }
+    | exp_int L_THAN exp_int            { Operation_Int_Less_Than_Int($1, $3) }
+    | exp_int G_THAN exp_int            { Operation_Int_Greater_Than_Int($1, $3) }
+    | exp_int L_THAN_EQ exp_int         { Operation_Int_Less_Than_Or_Eq_Int($1, $3) }
+    | exp_int G_THAN_EQ exp_int         { Operation_Int_Greater_Than_Or_Eq_Int($1, $3) }
     | exp_int NOT_EQ exp_int            { Operation_Int_Not_Eq_Int($1, $3) }
     | exp_int EQ exp_int                { Operation_Int_Eq_Int($1, $3) }
     
-    | exp_float L_THAN exp_float        { Operation_Float_Greater_Than_Float($1, $3) }
-    | exp_float G_THAN exp_float        { Operation_Float_Less_Than_Float($1, $3) }
-    | exp_float L_THAN_EQ exp_float     { Operation_Float_Greater_Than_Or_Eq_Float($1, $3) }
-    | exp_float G_THAN_EQ exp_float     { Operation_Float_Less_Than_Or_Eq_Float($1, $3) }
+    | exp_float L_THAN exp_float        { Operation_Float_Less_Than_Float($1, $3) }
+    | exp_float G_THAN exp_float        { Operation_Float_Greater_Than_Float($1, $3) }
+    | exp_float L_THAN_EQ exp_float     { Operation_Float_Less_Than_Or_Eq_Float($1, $3) }
+    | exp_float G_THAN_EQ exp_float     { Operation_Float_Greater_Than_Or_Eq_Float($1, $3) }
     | exp_float NOT_EQ exp_float        { Operation_Float_Not_Eq_Float($1, $3) }
     | exp_float EQ exp_float            { Operation_Float_Eq_Float($1, $3) }
     
-    | exp_float L_THAN exp_int          { Operation_Float_Greater_Than_Float($1, Expression_Int_To_Float($3)) }
-    | exp_float G_THAN exp_int          { Operation_Float_Less_Than_Float($1, Expression_Int_To_Float($3)) }
-    | exp_float L_THAN_EQ exp_int       { Operation_Float_Greater_Than_Or_Eq_Float($1, Expression_Int_To_Float($3)) }
-    | exp_float G_THAN_EQ exp_int       { Operation_Float_Less_Than_Or_Eq_Float($1, Expression_Int_To_Float($3)) }
+    | exp_float G_THAN exp_int          { Operation_Float_Greater_Than_Float($1, Expression_Int_To_Float($3)) }
+    | exp_float L_THAN exp_int          { Operation_Float_Less_Than_Float($1, Expression_Int_To_Float($3)) }
+    | exp_float G_THAN_EQ exp_int       { Operation_Float_Greater_Than_Or_Eq_Float($1, Expression_Int_To_Float($3)) }
+    | exp_float L_THAN_EQ exp_int       { Operation_Float_Less_Than_Or_Eq_Float($1, Expression_Int_To_Float($3)) }
     | exp_float NOT_EQ exp_int          { Operation_Float_Not_Eq_Float($1, Expression_Int_To_Float($3)) }
     | exp_float EQ exp_int              { Operation_Float_Eq_Float($1, Expression_Int_To_Float($3)) }
     
-    | exp_int L_THAN exp_float          { Operation_Float_Greater_Than_Float(Expression_Int_To_Float($1), $3) }
-    | exp_int G_THAN exp_float          { Operation_Float_Less_Than_Float(Expression_Int_To_Float($1), $3) }
-    | exp_int L_THAN_EQ exp_float       { Operation_Float_Greater_Than_Or_Eq_Float(Expression_Int_To_Float($1), $3) }
-    | exp_int G_THAN_EQ exp_float       { Operation_Float_Less_Than_Or_Eq_Float(Expression_Int_To_Float($1), $3)}
+    | exp_int G_THAN exp_float          { Operation_Float_Greater_Than_Float(Expression_Int_To_Float($1), $3) }
+    | exp_int L_THAN exp_float          { Operation_Float_Less_Than_Float(Expression_Int_To_Float($1), $3) }
+    | exp_int G_THAN_EQ exp_float       { Operation_Float_Greater_Than_Or_Eq_Float(Expression_Int_To_Float($1), $3) }
+    | exp_int L_THAN_EQ exp_float       { Operation_Float_Less_Than_Or_Eq_Float(Expression_Int_To_Float($1), $3)}
     | exp_int NOT_EQ exp_float          { Operation_Float_Not_Eq_Float(Expression_Int_To_Float($1), $3) }
     | exp_int EQ exp_float              { Operation_Float_Eq_Float(Expression_Int_To_Float($1), $3) }
     
     
-    | exp_int L_THAN exp_identifier     { Operation_Int_Greater_Than_Identifier($1, $3) }
-    | exp_int G_THAN exp_identifier     { Operation_Int_Less_Than_Identifier($1, $3) }
-    | exp_int L_THAN_EQ exp_identifier  { Operation_Int_Greater_Than_Or_Eq_Identifier($1, $3) }
-    | exp_int G_THAN_EQ exp_identifier  { Operation_Int_Less_Than_Or_Eq_Identifier($1, $3) }
+    | exp_int G_THAN exp_identifier     { Operation_Int_Greater_Than_Identifier($1, $3) }
+    | exp_int L_THAN exp_identifier     { Operation_Int_Less_Than_Identifier($1, $3) }
+    | exp_int G_THAN_EQ exp_identifier  { Operation_Int_Greater_Than_Or_Eq_Identifier($1, $3) }
+    | exp_int L_THAN_EQ exp_identifier  { Operation_Int_Less_Than_Or_Eq_Identifier($1, $3) }
     | exp_int NOT_EQ exp_identifier     { Operation_Int_Not_Eq_Identifier($1, $3) }
     | exp_int EQ exp_identifier         { Operation_Int_Eq_Identifier($1, $3) }
     
@@ -437,17 +430,17 @@ operation_bool:
     | exp_identifier NOT_EQ exp_int     { Operation_Identifier_Not_Eq_Int($1, $3) }
     | exp_identifier EQ exp_int         { Operation_Identifier_Eq_Int($1, $3) }
     
-    | exp_float L_THAN exp_identifier      { Operation_Float_Greater_Than_Identifier($1, $3) }
-    | exp_float G_THAN exp_identifier      { Operation_Float_Less_Than_Identifier($1, $3) }
-    | exp_float L_THAN_EQ exp_identifier   { Operation_Float_Greater_Than_Or_Eq_Identifier($1, $3) }
-    | exp_float G_THAN_EQ exp_identifier   { Operation_Float_Less_Than_Or_Eq_Identifier($1, $3) }
+    | exp_float G_THAN exp_identifier      { Operation_Float_Greater_Than_Identifier($1, $3) }
+    | exp_float L_THAN exp_identifier      { Operation_Float_Less_Than_Identifier($1, $3) }
+    | exp_float G_THAN_EQ exp_identifier   { Operation_Float_Greater_Than_Or_Eq_Identifier($1, $3) }
+    | exp_float L_THAN_EQ exp_identifier   { Operation_Float_Less_Than_Or_Eq_Identifier($1, $3) }
     | exp_float NOT_EQ exp_identifier      { Operation_Float_Not_Eq_Identifier($1, $3) }
     | exp_float EQ exp_identifier          { Operation_Float_Eq_Identifier($1, $3) }
     
-    | exp_identifier L_THAN exp_float      { Operation_Identifier_Greater_Than_Float($1, $3) }
-    | exp_identifier G_THAN exp_float      { Operation_Identifier_Less_Than_Float($1, $3) }
-    | exp_identifier L_THAN_EQ exp_float   { Operation_Identifier_Greater_Than_Or_Eq_Float($1, $3) }
-    | exp_identifier G_THAN_EQ exp_float   { Operation_Identifier_Less_Than_Or_Eq_Float($1, $3) }
+    | exp_identifier G_THAN exp_float      { Operation_Identifier_Greater_Than_Float($1, $3) }
+    | exp_identifier L_THAN exp_float      { Operation_Identifier_Less_Than_Float($1, $3) }
+    | exp_identifier G_THAN_EQ exp_float   { Operation_Identifier_Greater_Than_Or_Eq_Float($1, $3) }
+    | exp_identifier L_THAN_EQ exp_float   { Operation_Identifier_Less_Than_Or_Eq_Float($1, $3) }
     | exp_identifier NOT_EQ exp_float      { Operation_Identifier_Not_Eq_Float($1, $3) }
     | exp_identifier EQ exp_float          { Operation_Identifier_Eq_Float($1, $3) }
 ;

@@ -1,3 +1,4 @@
+open ParseTreeType
 open Mattc_par
 open Mattc_lex
 open Lexing
@@ -23,21 +24,18 @@ let parseFile_quiet filename =
     let fileIn = open_in filename in
     Lexing.from_channel fileIn
     |> parseWithErrors filename
-    |> ignore;  (* We don't want to do anything with the string we got from parsing *)
+    |> ignore;  (* We don't want to do anything with the tree we got from parsing *)
     close_in fileIn;
     print_endline ("File '" ^ filename ^ "' parsed correctly with value: ?")
 
-(*
 let parseFile_verbose filename =
     let fileIn = open_in filename in
     Lexing.from_channel fileIn
     |> parseWithErrors filename
-    |> String.concat "\n"
+    |> string_of_parseTree
     |> print_endline;
     close_in fileIn;
     print_endline ("File '" ^ filename ^ "' parsed correctly with value: ?")
-*)
-let parseFile_verbose = parseFile_quiet
     
 let parseFile filename =
     if !verbose
