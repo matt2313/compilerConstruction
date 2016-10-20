@@ -6,6 +6,6 @@ ocamlyacc -v mattc_par.mly
 ocamlc -c mattc_par.mli
 ocamlc -c mattc_par.ml
 ocamlc -c mattc_lex.ml
-ocamlc -c mattc.ml
+ocamlc -c -w -8 mattc.ml
 ocamlc -o mattc.exe parseTreeType.cmo mattc_lex.cmo mattc_par.cmo mattc.cmo
 echo Compilation Complete

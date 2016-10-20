@@ -15,8 +15,11 @@ Repository for the source files and documentation of the MattC compiler, created
 1. Navigate to the `/src/` folder
 2. Run `build_mc.sh` (for unix) or `build_mc.bat` (for windows)
   - On the lab machines, remember to run the command `module load opam` so that the ocaml binaries are available
+  - `mattc.ml` will normally show lots of warnings about incomplete pattern matching when compiled, until the issue is fixed these warnings are being suppressed by the compile script
 3. You can then run `mattc <filename>`, where `<filename>` is the file you want to compile. MattC files use the `.mc` file extension
-  - The compiler will work on any number of files given as arguments, and the `-v` option can be used to display the evaluation of each line as it is parsed. This is for debug purposes and does not work with some features, like variable evaluation
+  - The compiler will work on any number of files given as arguments
+  - The `-v` option can be used to display the full parse tree
+  - The '-e' option will evaluate the file after it has been parsed, and display the return value of the main function. Note that this does not work with function calls yet
 
 
 ## Syntax in a Nutshell
