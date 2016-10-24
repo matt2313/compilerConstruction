@@ -9,5 +9,5 @@ int main()
         y := y + 1;
     }
     
-    return y;
+    return y; // 10
 }

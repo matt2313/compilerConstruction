@@ -423,10 +423,10 @@ operation_bool:
     | exp_int NOT_EQ exp_identifier     { Operation_Int_Not_Eq_Identifier($1, $3) }
     | exp_int EQ exp_identifier         { Operation_Int_Eq_Identifier($1, $3) }
     
-    | exp_identifier L_THAN exp_int     { Operation_Identifier_Greater_Than_Int($1, $3) }
-    | exp_identifier G_THAN exp_int     { Operation_Identifier_Less_Than_Int($1, $3) }
-    | exp_identifier L_THAN_EQ exp_int  { Operation_Identifier_Greater_Than_Or_Eq_Int($1, $3) }
-    | exp_identifier G_THAN_EQ exp_int  { Operation_Identifier_Less_Than_Or_Eq_Int($1, $3) }
+    | exp_identifier G_THAN exp_int     { Operation_Identifier_Greater_Than_Int($1, $3) }
+    | exp_identifier L_THAN exp_int     { Operation_Identifier_Less_Than_Int($1, $3) }
+    | exp_identifier G_THAN_EQ exp_int  { Operation_Identifier_Greater_Than_Or_Eq_Int($1, $3) }
+    | exp_identifier L_THAN_EQ exp_int  { Operation_Identifier_Less_Than_Or_Eq_Int($1, $3) }
     | exp_identifier NOT_EQ exp_int     { Operation_Identifier_Not_Eq_Int($1, $3) }
     | exp_identifier EQ exp_int         { Operation_Identifier_Eq_Int($1, $3) }
     

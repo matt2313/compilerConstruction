@@ -6,7 +6,7 @@ string main()
     float b := read_float();
     float c := a * b;
     
-    print_string(a as string ^ " X " ^ b as string ^ " = " ^ c as string);
+    print_string((a as string) ^ " X " ^ (b as string) ^ " = " ^ (c as string));
         
     return c;
 }

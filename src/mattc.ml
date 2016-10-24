@@ -301,8 +301,12 @@ expression_bool_eval x currStore = match x with
                                             let sVal = extractStringValue eval.evaluation in
                                                 evalReturn(currStore, BoolValue(bool_of_string sVal))
     | Expression_Identifier_To_Bool(exp) -> let eval = (expression_identifier_eval exp currStore) in
-                                            let bVal = extractBoolValue eval.evaluation in
-                                                evalReturn(eval.newStore, BoolValue(bVal))
+                                                match eval.evaluation with
+                                                | IntValue(iVal)    -> evalReturn(eval.newStore, BoolValue(iVal = 1))
+                                                | FloatValue(fVal)  -> evalReturn(eval.newStore, BoolValue(fVal = 1.0))
+                                                | BoolValue(bVal)   -> evalReturn(eval.newStore, BoolValue(bVal))
+                                                | StringValue(sVal) -> evalReturn(eval.newStore, BoolValue(bool_of_string sVal))
+                                                | NoValue           -> raise (EvaluationError("Cannot convert NULL to bool"))
 and
 expression_string_eval x currStore = match x with
     | Expression_String_Literal(sVal)      -> evalReturn(currStore, StringValue(sVal))
@@ -320,8 +324,12 @@ expression_string_eval x currStore = match x with
                                               let bVal = extractBoolValue eval.evaluation in
                                                   evalReturn(currStore, StringValue(string_of_bool bVal))
     | Expression_Identifier_To_String(exp) -> let eval = (expression_identifier_eval exp currStore) in
-                                              let sVal = extractStringValue eval.evaluation in
-                                                  evalReturn(eval.newStore, StringValue(sVal))
+                                                  match eval.evaluation with
+                                                  | IntValue(iVal)    -> evalReturn(eval.newStore, StringValue(string_of_int iVal))
+                                                  | FloatValue(fVal)  -> evalReturn(eval.newStore, StringValue(string_of_float fVal))
+                                                  | BoolValue(bVal)   -> evalReturn(eval.newStore, StringValue(string_of_bool bVal))
+                                                  | StringValue(sVal) -> evalReturn(eval.newStore, StringValue(sVal))
+                                                  | NoValue           -> raise (EvaluationError("Cannot convert NULL to string"))
 and
 expression_identifier_eval x currStore = match x with
     | Expression_Identifier_Dereference(iden)           ->(match iden with
@@ -612,189 +620,189 @@ bool_operation_eval x currStore = match x with
 
     | Operation_Int_Less_Than_Int(lhs, rhs) -> let lhsEval = (expression_int_eval lhs currStore) in
                                                     let rhsEval = (expression_int_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue < rhsValue))
     | Operation_Int_Greater_Than_Int(lhs, rhs) -> let lhsEval = (expression_int_eval lhs currStore) in
                                                     let rhsEval = (expression_int_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue > rhsValue))
     | Operation_Int_Less_Than_Or_Eq_Int(lhs, rhs) -> let lhsEval = (expression_int_eval lhs currStore) in
                                                     let rhsEval = (expression_int_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue <= rhsValue))
     | Operation_Int_Greater_Than_Or_Eq_Int(lhs, rhs) -> let lhsEval = (expression_int_eval lhs currStore) in
                                                     let rhsEval = (expression_int_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue >= rhsValue))
     | Operation_Int_Eq_Int(lhs, rhs) -> let lhsEval = (expression_int_eval lhs currStore) in
                                                     let rhsEval = (expression_int_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue = rhsValue))
     | Operation_Int_Not_Eq_Int(lhs, rhs) -> let lhsEval = (expression_int_eval lhs currStore) in
                                                     let rhsEval = (expression_int_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue <> rhsValue))
                                                         
     | Operation_Int_Less_Than_Identifier(lhs, rhs) -> let lhsEval = (expression_int_eval lhs currStore) in
                                                     let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue < rhsValue))
     | Operation_Int_Greater_Than_Identifier(lhs, rhs) -> let lhsEval = (expression_int_eval lhs currStore) in
                                                     let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue > rhsValue))
     | Operation_Int_Less_Than_Or_Eq_Identifier(lhs, rhs) -> let lhsEval = (expression_int_eval lhs currStore) in
                                                     let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue <= rhsValue))
     | Operation_Int_Greater_Than_Or_Eq_Identifier(lhs, rhs) -> let lhsEval = (expression_int_eval lhs currStore) in
                                                     let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue >= rhsValue))
     | Operation_Int_Eq_Identifier(lhs, rhs) -> let lhsEval = (expression_int_eval lhs currStore) in
                                                     let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue = rhsValue))
     | Operation_Int_Not_Eq_Identifier(lhs, rhs) -> let lhsEval = (expression_int_eval lhs currStore) in
                                                     let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue <> rhsValue))
                                                         
     | Operation_Identifier_Less_Than_Int(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                     let rhsEval = (expression_int_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue < rhsValue))
     | Operation_Identifier_Greater_Than_Int(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                     let rhsEval = (expression_int_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue > rhsValue))
     | Operation_Identifier_Less_Than_Or_Eq_Int(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                     let rhsEval = (expression_int_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue <= rhsValue))
     | Operation_Identifier_Greater_Than_Or_Eq_Int(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                     let rhsEval = (expression_int_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue >= rhsValue))
     | Operation_Identifier_Eq_Int(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                     let rhsEval = (expression_int_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue = rhsValue))
     | Operation_Identifier_Not_Eq_Int(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                     let rhsEval = (expression_int_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractIntValue lhsEval.evaluation in
+                                                    let rhsValue = extractIntValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue <> rhsValue))
 
 
     | Operation_Float_Less_Than_Float(lhs, rhs) -> let lhsEval = (expression_float_eval lhs currStore) in
                                                     let rhsEval = (expression_float_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue < rhsValue))
     | Operation_Float_Greater_Than_Float(lhs, rhs) -> let lhsEval = (expression_float_eval lhs currStore) in
                                                     let rhsEval = (expression_float_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue > rhsValue))
     | Operation_Float_Less_Than_Or_Eq_Float(lhs, rhs) -> let lhsEval = (expression_float_eval lhs currStore) in
                                                     let rhsEval = (expression_float_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue <= rhsValue))
     | Operation_Float_Greater_Than_Or_Eq_Float(lhs, rhs) -> let lhsEval = (expression_float_eval lhs currStore) in
                                                     let rhsEval = (expression_float_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue >= rhsValue))
     | Operation_Float_Eq_Float(lhs, rhs) -> let lhsEval = (expression_float_eval lhs currStore) in
                                                     let rhsEval = (expression_float_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue = rhsValue))
     | Operation_Float_Not_Eq_Float(lhs, rhs) -> let lhsEval = (expression_float_eval lhs currStore) in
                                                     let rhsEval = (expression_float_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue <> rhsValue))
                                                         
     | Operation_Float_Less_Than_Identifier(lhs, rhs) -> let lhsEval = (expression_float_eval lhs currStore) in
                                                     let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue < rhsValue))
     | Operation_Float_Greater_Than_Identifier(lhs, rhs) -> let lhsEval = (expression_float_eval lhs currStore) in
                                                     let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue > rhsValue))
     | Operation_Float_Less_Than_Or_Eq_Identifier(lhs, rhs) -> let lhsEval = (expression_float_eval lhs currStore) in
                                                     let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue <= rhsValue))
     | Operation_Float_Greater_Than_Or_Eq_Identifier(lhs, rhs) -> let lhsEval = (expression_float_eval lhs currStore) in
                                                     let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue >= rhsValue))
     | Operation_Float_Eq_Identifier(lhs, rhs) -> let lhsEval = (expression_float_eval lhs currStore) in
                                                     let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue = rhsValue))
     | Operation_Float_Not_Eq_Identifier(lhs, rhs) -> let lhsEval = (expression_float_eval lhs currStore) in
                                                     let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue <> rhsValue))
                                                         
     | Operation_Identifier_Less_Than_Float(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                     let rhsEval = (expression_float_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue < rhsValue))
     | Operation_Identifier_Greater_Than_Float(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                     let rhsEval = (expression_float_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue > rhsValue))
     | Operation_Identifier_Less_Than_Or_Eq_Float(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                     let rhsEval = (expression_float_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue <= rhsValue))
     | Operation_Identifier_Greater_Than_Or_Eq_Float(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                     let rhsEval = (expression_float_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue >= rhsValue))
     | Operation_Identifier_Eq_Float(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                     let rhsEval = (expression_float_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue = rhsValue))
     | Operation_Identifier_Not_Eq_Float(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                     let rhsEval = (expression_float_eval rhs lhsEval.newStore) in
-                                                    let lhsValue = extractBoolValue lhsEval.evaluation in
-                                                    let rhsValue = extractBoolValue rhsEval.evaluation in
+                                                    let lhsValue = extractFloatValue lhsEval.evaluation in
+                                                    let rhsValue = extractFloatValue rhsEval.evaluation in
                                                         evalReturn(rhsEval.newStore, BoolValue(lhsValue <> rhsValue))
 and
 string_operation_eval x currStore = match x with
@@ -1070,7 +1078,7 @@ identifier_operation_eval x currStore = match x with
                                                           (
                                                           match (lhsEval.evaluation, rhsEval.evaluation) with
                                                           | (StringValue(lhsValue), StringValue(rhsValue)) -> string_operation_eval (Operation_String_Concat_String(Expression_String_Literal(lhsValue), Expression_String_Literal(rhsValue))) rhsEval.newStore
-                                                          | _                                              -> raise (EvaluationError("Must use ^ on strings."))
+                                                          | _                                              -> raise (EvaluationError("Can only use ^ on strings."))
                                                           )
     | Operation_Substring_Identifier_Identifier_Identifier(strExp, startExp, lenExp) -> let strExpEval = expression_identifier_eval strExp currStore in
                                                                                         let startExpEval = expression_identifier_eval startExp strExpEval.newStore in
@@ -1100,16 +1108,18 @@ let getPosition lexbuf =
     
 let parseWithErrors filename lexbuf =
     try Mattc_par.start Mattc_lex.read lexbuf with
-    | SyntaxError message -> prerr_string("ERROR: " ^ message ^ " at " ^ getPosition lexbuf);
-                             exit (-1)
-    | Parsing.Parse_error -> prerr_string("Parse error in '" ^ filename ^ "' at " ^ getPosition lexbuf);
-                             exit (-1)
-                             
+    | SyntaxError message     -> prerr_string("Syntax error (" ^ message ^ ") in '" ^ filename ^ "' at " ^ getPosition lexbuf);
+                                 exit (-1)
+    | Parsing.Parse_error     -> prerr_string("Parse error in '" ^ filename ^ "' at " ^ getPosition lexbuf);
+                                 exit (-1)
+
 let parseWithoutErrors = Mattc_par.start Mattc_lex.read
 
 let printFileResult x filename =
     if !evaluateFile then
-        print_endline ("File '" ^ filename ^ "' parsed correctly with value: " ^ ((parseTree_eval x emptyStore).evaluation |> valueToString) )
+        try print_endline ("File '" ^ filename ^ "' parsed correctly with value: " ^ ((parseTree_eval x emptyStore).evaluation |> valueToString)) with
+        | EvaluationError message -> prerr_string("Evaluation error in '" ^ filename ^ "' (" ^ message ^ ")");
+                                     exit(-1)
     else
         print_endline ("File '" ^ filename ^ "' parsed correctly.")
 
