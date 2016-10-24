@@ -247,7 +247,7 @@ exp_int:
     | exp_float CAST INT_TYPENAME               { Expression_Float_To_Int($1) }
     | exp_bool CAST INT_TYPENAME                { Expression_Bool_To_Int($1) }
     | exp_string CAST INT_TYPENAME              { Expression_String_To_Int($1) }
-    | exp_identifier CAST INT_TYPENAME         { Expression_Identifier_To_Int($1) }
+    | exp_identifier CAST INT_TYPENAME          { Expression_Identifier_To_Int($1) }
 ;
 
 exp_float:
