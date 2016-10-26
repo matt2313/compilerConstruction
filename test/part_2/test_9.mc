@@ -6,9 +6,9 @@ int add(int a, int b)
 string main()
 {
     print_string("Enter 2 strings:");
-    a := read_string();
-    b := read_string();
-    c := a ^ b;
+    string a := read_string();
+    string b := read_string();
+    string c := a ^ b;
     print_string(c);
     
     return c;

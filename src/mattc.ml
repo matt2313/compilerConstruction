@@ -51,8 +51,12 @@ let rec storeLookup from searchFor = match from with
     | []     -> raise (EvaluationError ("Variable '" ^ searchFor ^ "' not assigned."))
 let rec storeUpdate from searchFor newValue = match from with
     | hd::tl -> if hd.name = searchFor then {name = hd.name; storedValue = newValue}::tl else hd::(storeUpdate tl searchFor newValue)
-    | []     -> []
+    | []     -> raise (EvaluationError ("Variable '" ^ searchFor ^ "' not assigned."))
 let storeAdd addTo newName newValue = {name = newName; storedValue = newValue}::addTo
+let rec store_toString x = match x with
+    | [hd]   -> "(" ^ hd.name ^ ", " ^ (valueToString hd.storedValue) ^ ")"
+    | hd::tl -> "(" ^ hd.name ^ ", " ^ (valueToString hd.storedValue) ^ "), " ^ (store_toString tl)
+    | []     -> "emptyStore"
 let emptyStore = []
 
 type evalReturn = {newStore:store; evaluation:value}
@@ -1117,7 +1121,7 @@ let parseWithoutErrors = Mattc_par.start Mattc_lex.read
 
 let printFileResult x filename =
     if !evaluateFile then
-        try print_endline ("File '" ^ filename ^ "' parsed correctly with value: " ^ ((parseTree_eval x emptyStore).evaluation |> valueToString)) with
+        try let eval = parseTree_eval x emptyStore in print_endline ("File '" ^ filename ^ "' parsed correctly with value: " ^ (valueToString eval.evaluation) ^ " and store: {" ^ (store_toString eval.newStore) ^ "}") with
         | EvaluationError message -> prerr_string("Evaluation error in '" ^ filename ^ "' (" ^ message ^ ")");
                                      exit(-1)
     else
