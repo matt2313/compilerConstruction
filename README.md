@@ -19,7 +19,7 @@ Repository for the source files and documentation of the MattC compiler, created
 3. You can then run `mattc <filename>`, where `<filename>` is the file you want to compile. MattC files use the `.mc` file extension
   - The compiler will work on any number of files given as arguments
   - The `-v` option can be used to display the full parse tree
-  - The '-e' option will evaluate the file after it has been parsed, and display the return value of the main function. Note that this does not work with function calls yet
+  - The `-e` option will evaluate the file after it has been parsed, and display the return value of the main function.
 
 
 ## Syntax in a Nutshell
