@@ -142,8 +142,10 @@ exp:
 ;
 
 while_loop:
-    | WHILE exp_bool scoped_statement_list          { While_Loop_While($2, $3) }
-    | DO scoped_statement_list WHILE exp_bool EOE   { While_Loop_Do($2, $4) }
+    | WHILE exp_identifier scoped_statement_list        { While_Loop_While(Expression_Identifier_To_Bool($2), $3) }
+    | WHILE exp_bool scoped_statement_list              { While_Loop_While($2, $3) }
+    | DO scoped_statement_list WHILE exp_bool EOE       { While_Loop_Do($2, $4) }
+    | DO scoped_statement_list WHILE exp_identifier EOE { While_Loop_Do($2, Expression_Identifier_To_Bool($4)) }
 ;
 
 if_statement:

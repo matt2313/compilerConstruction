@@ -112,6 +112,14 @@ let evalReturn (x, y) = {newStore = x; evaluation = y}
 
 
 
+(* Helper functions for evaluating within new scope *)
+(* eval_func is a function that, when given a store, will evaluate to an evalReturn *)
+let evalInNewScope eval_func currStore = let eval = eval_func (pushScope currStore) in evalReturn (popScope eval.newStore, eval.evaluation)
+(* This function creates new scope with evalInNewScope, then updates the store from that with eval_func_first, then uses that store to evaluate eval_func_second *)
+let eval2InNewScope eval_func_first eval_func_second currStore = evalInNewScope (fun(currStore':store) -> let currStore'' = (eval_func_first currStore').newStore in eval_func_second currStore'') currStore
+
+
+
 (* Helper functions for converting a generic expression into one of a certain type, with appropriate error handling *)
 let getIntExp x = match x with
                   | Expression_Int(x)        -> x
@@ -158,14 +166,6 @@ let read_bool x =
         then false
     else
         raise (EvaluationError ("Cannot convert string '" ^ input ^ "' to bool"))
-
-
-
-(* Helper functions for evaluating within new scope *)
-(* eval_func is a function that, when given a store, will evaluate to an evalReturn *)
-let evalInNewScope eval_func currStore = let eval = eval_func (pushScope currStore) in evalReturn (popScope eval.newStore, eval.evaluation)
-(* This function creates new scope with evalInNewScope, then updates the store from that with eval_func_first, then uses that store to evaluate eval_func_second *)
-let eval2InNewScope eval_func_first eval_func_second currStore = evalInNewScope (fun(currStore':store) -> let currStore'' = (eval_func_first currStore').newStore in eval_func_second currStore'') currStore
 
 
 
@@ -247,53 +247,61 @@ expression_eval x currStore = match x with
 and
 while_statement_eval x currStore = match x with
     | While_Loop_While(exp, statList) -> let expEvaluation = expression_bool_eval exp currStore in
-                                         (
-                                         match expEvaluation.evaluation with
-                                         | BoolValue(true)  -> let currStore' = (statement_list_eval statList currStore).newStore in
-                                                               while_statement_eval (While_Loop_While(exp, statList)) currStore'
+                                         (match expEvaluation.evaluation with
+                                         | BoolValue(true)  -> let eval = evalInNewScope (statement_list_eval statList) expEvaluation.newStore in
+                                                               while_statement_eval (While_Loop_While(exp, statList)) eval.newStore
                                          | BoolValue(false) -> evalReturn(expEvaluation.newStore, NoValue)
                                          | _                -> raise (EvaluationError ("Loop condition must be bool."))
                                          )
-    | While_Loop_Do(statList, exp)    -> let currStore' = (statement_list_eval statList currStore).newStore in
-                                         let expEvaluation = expression_bool_eval exp currStore' in
-                                         (
-                                         match expEvaluation.evaluation with
+    | While_Loop_Do(statList, exp)    -> let eval = evalInNewScope (statement_list_eval statList) currStore in
+                                         let expEvaluation = expression_bool_eval exp eval.newStore in
+                                         (match expEvaluation.evaluation with
                                          | BoolValue(true)  -> while_statement_eval (While_Loop_Do(statList, exp)) expEvaluation.newStore
                                          | BoolValue(false) -> evalReturn(expEvaluation.newStore, NoValue)
                                          | _                -> raise (EvaluationError ("Loop condition must be bool."))
                                          )
 and
 if_statement_eval x currStore = match x with
-    | If_Statement_If_Bool(exp, statList)                       -> let expEvaluation = expression_bool_eval exp currStore in
+    | If_Statement_If_Bool(exp, statList)                       -> let expEvaluation = expression_bool_eval exp (pushScope currStore) in
                                                                    if extractBoolValue expEvaluation.evaluation = true then
-                                                                    statement_list_eval statList expEvaluation.newStore
+                                                                    let eval = statement_list_eval statList expEvaluation.newStore in
+                                                                        evalReturn(popScope eval.newStore, eval.evaluation)
                                                                    else
                                                                     evalReturn(expEvaluation.newStore, NoValue)
-    | If_Statement_Else_Bool(exp, statList, statListElse)       -> let expEvaluation = expression_bool_eval exp currStore in
+    | If_Statement_Else_Bool(exp, statList, statListElse)       -> let expEvaluation = expression_bool_eval exp (pushScope currStore) in
                                                                    if extractBoolValue expEvaluation.evaluation = true then
-                                                                    statement_list_eval statList expEvaluation.newStore
+                                                                    let eval = statement_list_eval statList expEvaluation.newStore in
+                                                                        evalReturn(popScope eval.newStore, eval.evaluation)
                                                                    else
-                                                                    statement_list_eval statListElse expEvaluation.newStore
-    | If_Statement_Else_List_Bool(exp, statList, ifStat)        -> let expEvaluation = expression_bool_eval exp currStore in
+                                                                    let eval = statement_list_eval statListElse expEvaluation.newStore in
+                                                                        evalReturn(popScope eval.newStore, eval.evaluation)
+    | If_Statement_Else_List_Bool(exp, statList, ifStat)        -> let expEvaluation = expression_bool_eval exp (pushScope currStore) in
                                                                    if extractBoolValue expEvaluation.evaluation = true then
-                                                                    statement_list_eval statList expEvaluation.newStore
+                                                                      let eval = statement_list_eval statList expEvaluation.newStore in
+                                                                          evalReturn(popScope eval.newStore, eval.evaluation)
                                                                    else
-                                                                    if_statement_eval ifStat expEvaluation.newStore
-    | If_Statement_If_Identifier(exp, statList)                 -> let expEvaluation = expression_identifier_eval exp currStore in
+                                                                      let eval = if_statement_eval ifStat expEvaluation.newStore in
+                                                                          evalReturn(popScope eval.newStore, eval.evaluation)
+    | If_Statement_If_Identifier(exp, statList)                 -> let expEvaluation = expression_identifier_eval exp (pushScope currStore) in
                                                                    if extractBoolValue expEvaluation.evaluation = true then
-                                                                    statement_list_eval statList expEvaluation.newStore
+                                                                    let eval = statement_list_eval statList expEvaluation.newStore in
+                                                                        evalReturn(popScope eval.newStore, eval.evaluation)
                                                                    else
-                                                                    evalReturn(expEvaluation.newStore, NoValue)
-    | If_Statement_Else_Identifier(exp, statList, statListElse) -> let expEvaluation = expression_identifier_eval exp currStore in
+                                                                    evalReturn(popScope expEvaluation.newStore, NoValue)
+    | If_Statement_Else_Identifier(exp, statList, statListElse) -> let expEvaluation = expression_identifier_eval exp (pushScope currStore) in
                                                                    if extractBoolValue expEvaluation.evaluation = true then
-                                                                    statement_list_eval statList expEvaluation.newStore
+                                                                      let eval = statement_list_eval statList expEvaluation.newStore in
+                                                                          evalReturn(popScope eval.newStore, eval.evaluation)
                                                                    else
-                                                                    statement_list_eval statListElse expEvaluation.newStore
-    | If_Statement_Else_List_Identifier(exp, statList, ifStat)  -> let expEvaluation = expression_identifier_eval exp currStore in
+                                                                      let eval = statement_list_eval statListElse expEvaluation.newStore in
+                                                                          evalReturn(popScope eval.newStore, eval.evaluation)
+    | If_Statement_Else_List_Identifier(exp, statList, ifStat)  -> let expEvaluation = expression_identifier_eval exp (pushScope currStore) in
                                                                    if extractBoolValue expEvaluation.evaluation = true then
-                                                                    statement_list_eval statList expEvaluation.newStore
+                                                                      let eval = statement_list_eval statList expEvaluation.newStore in
+                                                                          evalReturn(popScope eval.newStore, eval.evaluation)
                                                                    else
-                                                                    if_statement_eval ifStat expEvaluation.newStore
+                                                                      let eval = if_statement_eval ifStat expEvaluation.newStore in
+                                                                          evalReturn(popScope eval.newStore, eval.evaluation)
 and             
 return_statement_eval x currStore = match x with
     | Return_Int(exp)           -> expression_int_eval exp currStore
