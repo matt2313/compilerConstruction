@@ -177,14 +177,19 @@ let rec parseTree_eval x currStore = match x with
     | ParseTree_Empty -> evalReturn(currStore, NoValue)
 and
 function_list_eval x currStore = match x with
-    | Function_List_Def(funcDefinition)            -> if nameOfFunction funcDefinition = mainFunctionName then function_definition_eval funcDefinition currStore else evalReturn(currStore, NoValue)
+    | Function_List_Def(funcDefinition)            -> if nameOfFunction funcDefinition = mainFunctionName then main_function_definition_eval funcDefinition currStore
+                                                                                                          else evalReturn(currStore, NoValue)
     | Function_List_Let(letStatement, funcList)    -> eval2InNewScope (let_statement_eval letStatement) (function_list_eval funcList) currStore
     | Function_List_New(newStatement, funcList)    -> eval2InNewScope (new_statement_eval newStatement) (function_list_eval funcList) currStore
-    | Function_List_List(funcDefinition, funcList) -> if (nameOfFunction funcDefinition) = mainFunctionName then (function_definition_eval funcDefinition currStore) else (function_list_eval funcList currStore)
+    | Function_List_List(funcDefinition, funcList) -> if (nameOfFunction funcDefinition) = mainFunctionName then (main_function_definition_eval funcDefinition currStore)
+                                                                                                            else let currStore' = (function_definition_eval funcDefinition currStore).newStore in
+                                                                                                                     function_list_eval funcList currStore'
+and
+main_function_definition_eval x currStore = match x with
+    | Function_Definition(iden, args, statements) -> evalInNewScope (statement_list_eval statements) currStore
 and
 function_definition_eval x currStore = match x with
-(* Note: we are ignoring definition of the function itself, we only care about the code inside it for now *)
-    | Function_Definition(iden, args, statements) -> evalInNewScope (statement_list_eval statements) currStore
+    | Function_Definition(iden, args, statements) -> identifier_declare iden currStore (Function(x))
 and
 nameOfFunction x = match x with
                    | Function_Definition(iden, _, _) ->(match iden with
@@ -213,9 +218,6 @@ and
 identifier_update iden currStore newValue = match iden with
     | Identifier_Reference(name) -> evalReturn(storeUpdate currStore name newValue, newValue)
     | _                          -> raise (EvaluationError ("Cannot update identifier here"))
-and
-(* We're ignoring function definitions and calls for now *)
-argument_list_eval x currStore = evalReturn(currStore, NoValue)
 and
 (* A return statement produces a value for the statement list, anything else updates the store only *)
 statement_list_eval x currStore = match x with
@@ -246,18 +248,18 @@ expression_eval x currStore = match x with
     | Expression_IO(ioOp) -> io_operation_eval ioOp currStore
 and
 while_statement_eval x currStore = match x with
-    | While_Loop_While(exp, statList) -> let expEvaluation = expression_bool_eval exp currStore in
+    | While_Loop_While(exp, statList) -> let expEvaluation = expression_bool_eval exp (pushScope currStore) in
                                          (match expEvaluation.evaluation with
-                                         | BoolValue(true)  -> let eval = evalInNewScope (statement_list_eval statList) expEvaluation.newStore in
-                                                               while_statement_eval (While_Loop_While(exp, statList)) eval.newStore
+                                         | BoolValue(true)  -> let eval = statement_list_eval statList expEvaluation.newStore in
+                                                               while_statement_eval (While_Loop_While(exp, statList)) (popScope eval.newStore)
                                          | BoolValue(false) -> evalReturn(expEvaluation.newStore, NoValue)
                                          | _                -> raise (EvaluationError ("Loop condition must be bool."))
                                          )
-    | While_Loop_Do(statList, exp)    -> let eval = evalInNewScope (statement_list_eval statList) currStore in
+    | While_Loop_Do(statList, exp)    -> let eval = statement_list_eval statList (pushScope currStore) in
                                          let expEvaluation = expression_bool_eval exp eval.newStore in
                                          (match expEvaluation.evaluation with
-                                         | BoolValue(true)  -> while_statement_eval (While_Loop_Do(statList, exp)) expEvaluation.newStore
-                                         | BoolValue(false) -> evalReturn(expEvaluation.newStore, NoValue)
+                                         | BoolValue(true)  -> while_statement_eval (While_Loop_Do(statList, exp)) (popScope expEvaluation.newStore)
+                                         | BoolValue(false) -> evalReturn(popScope expEvaluation.newStore, NoValue)
                                          | _                -> raise (EvaluationError ("Loop condition must be bool."))
                                          )
 and
@@ -421,14 +423,12 @@ expression_identifier_eval x currStore = match x with
                                                                  | Identifier_Reference(idenName) -> evalReturn(currStore, storeLookup currStore idenName)
                                                                  | _                              -> raise (EvaluationError ("Cannot dereference variable declaration"))
                                                            )
-    (* Functions are not currently supported *)
-    | Expression_Identifier_Function_Call(iden, params) -> evalReturn(currStore, NoValue)
     | Expression_Identifier_Operation(op)               -> identifier_operation_eval op currStore
     | Expression_Identifier_Declare_Int(iden, exp)      -> let eval = (expression_identifier_eval exp currStore) in let currStore' = eval.newStore in identifier_declare iden currStore' eval.evaluation
     | Expression_Identifier_Declare_Float(iden, exp)    -> let eval = (expression_identifier_eval exp currStore) in let currStore' = eval.newStore in identifier_declare iden currStore' eval.evaluation
     | Expression_Identifier_Declare_Bool(iden, exp)     -> let eval = (expression_identifier_eval exp currStore) in let currStore' = eval.newStore in identifier_declare iden currStore' eval.evaluation
     | Expression_Identifier_Declare_String(iden, exp)   -> let eval = (expression_identifier_eval exp currStore) in let currStore' = eval.newStore in identifier_declare iden currStore' eval.evaluation
-    | Expression_Identifier_Assign(iden, exp)           -> match iden with
+    | Expression_Identifier_Assign(iden, exp)           -> (match iden with
                                                                  | Identifier_Reference(idenName) ->(match (storeLookup currStore idenName) with
                                                                                                      | IntValue(_)    -> let eval = (expression_identifier_eval exp currStore) in evalReturn(storeUpdate eval.newStore idenName eval.evaluation, eval.evaluation)
                                                                                                      | FloatValue(_)  -> let eval = (expression_identifier_eval exp currStore) in evalReturn(storeUpdate eval.newStore idenName eval.evaluation, eval.evaluation)
@@ -438,6 +438,32 @@ expression_identifier_eval x currStore = match x with
                                                                                                      | NoValue        -> raise (EvaluationError ("Cannot assign variable to NULL"))
                                                                                                     )
                                                                   | _                              -> raise (EvaluationError ("Cannot assign to nonexisting identifier"))
+                                                           )
+    | Expression_Identifier_Function_Call(iden, params) -> match iden with
+                                                                 | Identifier_Reference(idenName) -> (match storeLookup currStore idenName with
+                                                                                                           | Function(fun_def) -> function_call_eval fun_def params currStore
+                                                                                                           | _                 -> raise (EvaluationError ("Expected function identifier but got variable"))
+                                                                                                     )
+                                                                 | _                              -> raise (EvaluationError ("Cannot call function declaration"))
+and
+function_call_eval fun_def params currStore = match fun_def with
+    | Function_Definition(Identifier_Declaration(functionType, functionName), args, statements) -> let currStore' = matchArgsToParams args params (pushScope currStore) in
+                                                                                                   let returnValue = evalInNewScope (statement_list_eval statements) currStore' in
+                                                                                                       (match (functionType, returnValue.evaluation) with
+                                                                                                       | (Int, IntValue(_))       
+                                                                                                       | (Float, FloatValue(_))   
+                                                                                                       | (Bool, BoolValue(_))     
+                                                                                                       | (String, StringValue(_)) -> evalReturn((popScope returnValue.newStore), returnValue.evaluation)
+                                                                                                       | (_, NoValue)                     -> raise (EvaluationError ("No return value found for function"))
+                                                                                                       | (_, _)                           -> raise (EvaluationError ("Return value does not match the function's type"))
+                                                                                                       )
+    | _                                                                                         -> raise (EvaluationError ("Function definition does not specify type"))
+and
+matchArgsToParams args params currStore = match (args, params) with
+    | (Argument_List_Empty, Parameter_List_Empty)                        -> currStore
+    | (Argument_List_Element(iden), Parameter_List_Element(exp))         -> let eval = expression_eval exp currStore in (identifier_declare iden eval.newStore eval.evaluation).newStore
+    | (Argument_List_List(iden, args), Parameter_List_List(exp, params)) -> let eval = expression_eval exp currStore in let currStore' = (identifier_declare iden eval.newStore eval.evaluation).newStore in matchArgsToParams args params currStore'
+    | _                                                                  -> raise (EvaluationError ("Number of arguments and parameters don't match"))
 and
 int_operation_eval x currStore = match x with
     | Operation_Int_Plus_Int(lhs, rhs)            -> let lhsEval = (expression_int_eval lhs currStore) in
@@ -1175,6 +1201,3 @@ identifier_operation_eval x currStore = match x with
                                                                                         | (StringValue(strExpValue), IntValue(startExpValue), IntValue(lenExpValue)) -> string_operation_eval (Operation_Substring_String_Int_Int(Expression_String_Literal(strExpValue), Expression_Int_Literal(startExpValue), Expression_Int_Literal(lenExpValue))) lenExpEval.newStore
                                                                                         | _                                                                          -> raise (EvaluationError("Substring must take a string and 2 ints."))
                                                                                         )
-and
-(* Functions not yet implemented *)
-parameter_list_eval x currStore = evalReturn(currStore, NoValue)
