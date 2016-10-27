@@ -29,7 +29,7 @@ int function()
 }
 ```
 will evaluate to `-1`.
-All functions must return exactly 1 value, and stop executing when a `return` statement is called.
+All functions must return exactly 1 value, and their return statement must be called last without being in the scope of another nested statement (such as a `while` or `let` statement)
 
 Functions can be evaluated like so:
 ```
@@ -37,5 +37,3 @@ foo(); // function with no agruments
 bar("Hello, World!"); // function with 1 string argument
 foo2(12.0, 5.0); // function with 2 float arguments
 ```
-
-**IMPORTANT NOTE: Since the lexer doesn't store any information on what identifiers have been assigned, it will not notice an error if you try to access an unassigned function or use the wrong number of parameters when calling a function. It also cannot check if a return statement was provided.**

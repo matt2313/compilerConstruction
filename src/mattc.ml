@@ -24,7 +24,7 @@ let parseWithoutErrors = Mattc_par.start Mattc_lex.read
 
 let printFileResult x filename =
     if !evaluateFile then
-        try let eval = parseTree_eval x emptyStore in print_endline (""); print_endline ("File '" ^ filename ^ "' parsed correctly with value: " ^ (valueToString eval.evaluation)) with
+        try let eval = parseTree_eval x emptyStore in print_endline ""; print_endline ("File '" ^ filename ^ "' parsed correctly with value: " ^ (valueToString eval.evaluation)) with
         | EvaluationError message -> prerr_string("Evaluation error in '" ^ filename ^ "' (" ^ message ^ ")");
                                      exit(-1)
     else

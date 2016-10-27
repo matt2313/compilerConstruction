@@ -4,18 +4,20 @@ exception EvaluationError of string
 
 
 
-(* Value types are used to store the result of an evaluation, they can store any type that id supported by the language *)
+(* Value types are used to store the result of an evaluation, they can store any type that is supported by the language, as well as null values and functions *)
 type value =
     | IntValue of int
     | FloatValue of float
     | BoolValue of bool
     | StringValue of string
+    | Function of function_definition
     | NoValue
 let valueToString x = match x with
     | IntValue(x) -> "Int(" ^ string_of_int x ^ ")"
     | FloatValue(x) -> "Float(" ^ string_of_float x ^ ")"
     | BoolValue(x) -> "Bool(" ^ string_of_bool x ^ ")"
     | StringValue(x) -> "String(" ^ x ^ ")"
+    | Function(x) -> function_definition_toString x 0 "  "
     | NoValue -> "NULL"
     
 let extractIntValue x = match x with
@@ -23,24 +25,28 @@ let extractIntValue x = match x with
                         | FloatValue(_)  -> raise (EvaluationError ("cannot take int value from float"))
                         | BoolValue(_)   -> raise (EvaluationError ("cannot take int value from bool"))
                         | StringValue(_) -> raise (EvaluationError ("cannot take int value from string"))
+                        | Function(_)    -> raise (EvaluationError ("cannot take int value from function name"))
                         | NoValue        -> raise (EvaluationError ("cannot take int value from NULL"))
 let extractFloatValue x = match x with
                         | IntValue(_)    -> raise (EvaluationError ("cannot take float value from int"))
                         | FloatValue(x)  -> x
                         | BoolValue(_)   -> raise (EvaluationError ("cannot take float value from bool"))
                         | StringValue(_) -> raise (EvaluationError ("cannot take float value from string"))
+                        | Function(_)    -> raise (EvaluationError ("cannot take float value from function name"))
                         | NoValue        -> raise (EvaluationError ("cannot take float value from NULL"))
 let extractBoolValue x = match x with
                         | IntValue(_)    -> raise (EvaluationError ("cannot take bool value from int"))
                         | FloatValue(_)  -> raise (EvaluationError ("cannot take bool value from float"))
                         | BoolValue(x)   -> x
                         | StringValue(_) -> raise (EvaluationError ("cannot take bool value from string"))
+                        | Function(_)    -> raise (EvaluationError ("cannot take bool value from function name"))
                         | NoValue        -> raise (EvaluationError ("cannot take bool value from NULL"))
 let extractStringValue x = match x with
                         | IntValue(_)    -> raise (EvaluationError ("cannot take string value from int"))
                         | FloatValue(_)  -> raise (EvaluationError ("cannot take string value from float"))
                         | BoolValue(_)   -> raise (EvaluationError ("cannot take string value from bool"))
                         | StringValue(x) -> x
+                        | Function(_)    -> raise (EvaluationError ("cannot take string value from function name"))
                         | NoValue        -> raise (EvaluationError ("cannot take string value from NULL"))
 
 
@@ -61,20 +67,29 @@ let rec storeLookup from searchFor = match from with
                     )
     | []     -> raise (EvaluationError ("Variable '" ^ searchFor ^ "' not assigned."))
    
-let rec storeUpdate' from searchFor newValue = match from with
-    | hd::tl -> if hd.name = searchFor then {name = hd.name; storedValue = newValue}::tl else hd::(storeUpdate' tl searchFor newValue)
-    | []     -> [] (* Using empty list to indicate that the varibale wasn't found. This is a bit hacky but shouldn't cause any problems since an empty list already indicates failure *) 
 let rec storeUpdate from searchFor newValue = match from with
-    | hd::tl -> let updatedStore = storeUpdate' hd searchFor newValue in
-                    (match updatedStore with
-                           | [] -> hd::(storeUpdate tl searchFor newValue)
-                           | _  -> updatedStore::tl
-                    )
-    | []     -> raise (EvaluationError ("Variable '" ^ searchFor ^ "' not assigned."))
+    | hd1::tl1 -> (match hd1 with
+                  | hd2::tl2 -> if hd2.name = searchFor then (match (hd2.storedValue, newValue) with
+                                                             | (IntValue(_), IntValue(_))
+                                                             | (FloatValue(_), FloatValue(_))
+                                                             | (BoolValue(_), BoolValue(_))
+                                                             | (StringValue(_), StringValue(_)) -> ({name = searchFor; storedValue = newValue}::tl2)::tl1
+                                                             | (x, y)                           -> raise (EvaluationError ("Tried to assign " ^ (valueToString y) ^ " to " ^ (valueToString x)))
+                                                             )
+                                                        else (match storeUpdate (tl2::tl1) searchFor newValue with
+                                                             | hd3::tl3 -> (hd2::hd3)::tl3
+                                                             | []       -> []
+                                                             )
+                  | []       -> hd1::(storeUpdate tl1 searchFor newValue)
+                  )
+    | []       -> raise (EvaluationError ("Variable '" ^ searchFor ^ "' not assigned."))
     
 let storeAdd addTo newName newValue = match addTo with
-    | hd::tl -> ({name = newName; storedValue = newValue}::hd)::tl
-    | []     -> raise (EvaluationError ("No scopes exist"))
+    | hd::tl -> (match storeLookup' hd newName with
+                | NoValue -> ({name = newName; storedValue = newValue}::hd)::tl
+                | _       -> raise (EvaluationError("A variable or function with the name '" ^ newName ^ "' already exists in the current scope"))
+                )
+    | []     -> raise (EvaluationError ("No scope exists"))
 
 let rec store_toString' x = match x with
     | [hd]   -> "(" ^ hd.name ^ ", " ^ (valueToString hd.storedValue) ^ ")"
@@ -83,7 +98,7 @@ let rec store_toString' x = match x with
 let store_toString x = store_toString' (List.flatten x)
 
 let pushScope addTo = []::addTo
-let popScore popFrom = match popFrom with
+let popScope popFrom = match popFrom with
     | hd::tl -> tl
     | []     -> raise (EvaluationError("Tried to pop global scope"))
 
@@ -146,6 +161,14 @@ let read_bool x =
 
 
 
+(* Helper functions for evaluating within new scope *)
+(* eval_func is a function that, when given a store, will evaluate to an evalReturn *)
+let evalInNewScope eval_func currStore = let eval = eval_func (pushScope currStore) in evalReturn (popScope eval.newStore, eval.evaluation)
+(* This function creates new scope with evalInNewScope, then updates the store from that with eval_func_first, then uses that store to evaluate eval_func_second *)
+let eval2InNewScope eval_func_first eval_func_second currStore = evalInNewScope (fun(currStore':store) -> let currStore'' = (eval_func_first currStore').newStore in eval_func_second currStore'') currStore
+
+
+
 (* Code for the evaluation of a parse tree *)
 let mainFunctionName = "main"
 
@@ -154,14 +177,14 @@ let rec parseTree_eval x currStore = match x with
     | ParseTree_Empty -> evalReturn(currStore, NoValue)
 and
 function_list_eval x currStore = match x with
-    | Function_List_Def(funcDefinition) -> if nameOfFunction funcDefinition = mainFunctionName then function_definition_eval funcDefinition currStore else evalReturn(currStore, NoValue)
-    | Function_List_Let(letStatement, funcList) -> let currStore' = (let_statement_eval letStatement currStore).newStore in (function_list_eval funcList currStore')
-    | Function_List_New(newStatement, funcList) -> let currStore' = (new_statement_eval newStatement currStore).newStore in (function_list_eval funcList currStore')
+    | Function_List_Def(funcDefinition)            -> if nameOfFunction funcDefinition = mainFunctionName then function_definition_eval funcDefinition currStore else evalReturn(currStore, NoValue)
+    | Function_List_Let(letStatement, funcList)    -> eval2InNewScope (let_statement_eval letStatement) (function_list_eval funcList) currStore
+    | Function_List_New(newStatement, funcList)    -> eval2InNewScope (new_statement_eval newStatement) (function_list_eval funcList) currStore
     | Function_List_List(funcDefinition, funcList) -> if (nameOfFunction funcDefinition) = mainFunctionName then (function_definition_eval funcDefinition currStore) else (function_list_eval funcList currStore)
 and
 function_definition_eval x currStore = match x with
 (* Note: we are ignoring definition of the function itself, we only care about the code inside it for now *)
-    | Function_Definition(iden, args, statements) -> (statement_list_eval statements currStore)
+    | Function_Definition(iden, args, statements) -> evalInNewScope (statement_list_eval statements) currStore
 and
 nameOfFunction x = match x with
                    | Function_Definition(iden, _, _) ->(match iden with
@@ -211,8 +234,8 @@ statement_eval x currStore = match x with
     | Statement_If(ifStat) -> if_statement_eval ifStat currStore
     | Statement_Function(func) -> function_definition_eval func currStore
     | Statement_Return(ret) -> return_statement_eval ret currStore
-    | Statement_Let(letStat, stat) -> let currStore' = (let_statement_eval letStat currStore).newStore in (statement_eval stat currStore')
-    | Statement_New(newStat, stat) -> let currStore' = (new_statement_eval newStat currStore).newStore in (statement_eval stat currStore')
+    | Statement_Let(letStat, stat) -> eval2InNewScope (let_statement_eval letStat) (statement_eval stat) currStore
+    | Statement_New(newStat, stat) -> eval2InNewScope (new_statement_eval newStat) (statement_eval stat) currStore
 and
 expression_eval x currStore = match x with
     | Expression_Int(exp) -> expression_int_eval exp currStore
@@ -304,9 +327,14 @@ expression_int_eval x currStore = match x with
     | Expression_String_To_Int(exp)     -> let eval = (expression_string_eval exp currStore) in
                                            let sVal = extractStringValue eval.evaluation in
                                                evalReturn(eval.newStore, IntValue(int_of_string sVal))
-    | Expression_Identifier_To_Int(exp) -> let eval = (expression_identifier_eval exp currStore) in
-                                           let iVal = extractIntValue eval.evaluation in
-                                               evalReturn(eval.newStore, IntValue(iVal))
+    | Expression_Identifier_To_Int(exp) -> let eval = expression_identifier_eval exp currStore in
+                                           match eval.evaluation with
+                                           | IntValue(iVal)    -> evalReturn(eval.newStore, IntValue(iVal))
+                                           | FloatValue(fVal)  -> expression_int_eval (Expression_Float_To_Int(Expression_Float_Literal(fVal))) eval.newStore
+                                           | BoolValue(bVal)   -> expression_int_eval (Expression_Bool_To_Int(Expression_Bool_Literal(bVal))) eval.newStore
+                                           | StringValue(sVal) -> expression_int_eval (Expression_String_To_Int(Expression_String_Literal(sVal))) eval.newStore
+                                           | Function(_)       -> raise (EvaluationError ("Cannot convert function name to int"))
+                                           | NoValue           -> raise (EvaluationError ("Cannot convert NULL to int"))
 and
 expression_float_eval x currStore = match x with
     | Expression_Float_Literal(fVal)      -> evalReturn(currStore, FloatValue(fVal))
@@ -327,9 +355,10 @@ expression_float_eval x currStore = match x with
                                                  match eval.evaluation with
                                                  | IntValue(iVal)    -> expression_float_eval (Expression_Int_To_Float(Expression_Int_Literal(extractIntValue eval.evaluation))) eval.newStore
                                                  | FloatValue(fVal)  -> evalReturn(eval.newStore, FloatValue(fVal))
-                                                 | BoolValue(bVal)   -> raise (EvaluationError("Expected value of type float but got value of type bool"))
-                                                 | StringValue(sVal) -> raise (EvaluationError("Expected value of type float but got value of type string"))
-                                                 | NoValue           -> raise (EvaluationError("Expected value of type float but got NULL"))
+                                                 | BoolValue(bVal)   -> evalReturn(eval.newStore, FloatValue(if bVal then 1.0 else 0.0))
+                                                 | StringValue(sVal) -> evalReturn(eval.newStore, FloatValue(float_of_string sVal))
+                                                 | Function(_)       -> raise (EvaluationError("Cannot convert function name to float"))
+                                                 | NoValue           -> raise (EvaluationError("Cannot convert NULL to float"))
 and
 expression_bool_eval x currStore = match x with
     | Expression_Bool_Literal(bVal)      -> evalReturn(currStore, BoolValue(bVal))
@@ -352,6 +381,7 @@ expression_bool_eval x currStore = match x with
                                                 | FloatValue(fVal)  -> evalReturn(eval.newStore, BoolValue(fVal = 1.0))
                                                 | BoolValue(bVal)   -> evalReturn(eval.newStore, BoolValue(bVal))
                                                 | StringValue(sVal) -> evalReturn(eval.newStore, BoolValue(bool_of_string sVal))
+                                                | Function(_)       -> raise (EvaluationError("Cannot convert function name to bool"))
                                                 | NoValue           -> raise (EvaluationError("Cannot convert NULL to bool"))
 and
 expression_string_eval x currStore = match x with
@@ -375,6 +405,7 @@ expression_string_eval x currStore = match x with
                                                   | FloatValue(fVal)  -> evalReturn(eval.newStore, StringValue(string_of_float fVal))
                                                   | BoolValue(bVal)   -> evalReturn(eval.newStore, StringValue(string_of_bool bVal))
                                                   | StringValue(sVal) -> evalReturn(eval.newStore, StringValue(sVal))
+                                                  | Function(_)       -> raise (EvaluationError("Cannot convert function name to string"))
                                                   | NoValue           -> raise (EvaluationError("Cannot convert NULL to string"))
 and
 expression_identifier_eval x currStore = match x with
@@ -395,6 +426,7 @@ expression_identifier_eval x currStore = match x with
                                                                                                      | FloatValue(_)  -> let eval = (expression_identifier_eval exp currStore) in evalReturn(storeUpdate eval.newStore idenName eval.evaluation, eval.evaluation)
                                                                                                      | BoolValue(_)   -> let eval = (expression_identifier_eval exp currStore) in evalReturn(storeUpdate eval.newStore idenName eval.evaluation, eval.evaluation)
                                                                                                      | StringValue(_) -> let eval = (expression_identifier_eval exp currStore) in evalReturn(storeUpdate eval.newStore idenName eval.evaluation, eval.evaluation)
+                                                                                                     | Function(_)    -> raise (EvaluationError ("Cannot assign variable to function name"))
                                                                                                      | NoValue        -> raise (EvaluationError ("Cannot assign variable to NULL"))
                                                                                                     )
                                                                   | _                              -> raise (EvaluationError ("Cannot assign to nonexisting identifier"))
@@ -931,7 +963,7 @@ identifier_operation_eval x currStore = match x with
                                                             | (IntValue(lhsValue), FloatValue(rhsValue)) -> float_operation_eval (Operation_Float_Plus_Float(Expression_Int_To_Float(Expression_Int_Literal(lhsValue)), Expression_Float_Literal(rhsValue))) rhsEval.newStore
                                                             | (FloatValue(lhsValue), IntValue(rhsValue)) -> float_operation_eval (Operation_Float_Plus_Float(Expression_Float_Literal(lhsValue), Expression_Int_To_Float(Expression_Int_Literal(rhsValue)))) rhsEval.newStore
                                                             | (IntValue(_), IntValue(_))                 -> int_operation_eval (Operation_Int_Plus_Int(Expression_Identifier_To_Int(lhs), Expression_Identifier_To_Int(rhs))) rhsEval.newStore
-                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use + operator on NULL"))
+                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use + operator here"))
                                                             )
     | Operation_Identifier_Minus_Identifier(lhs, rhs)    -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                             let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
@@ -945,7 +977,7 @@ identifier_operation_eval x currStore = match x with
                                                             | (IntValue(lhsValue), FloatValue(rhsValue)) -> float_operation_eval (Operation_Float_Minus_Float(Expression_Int_To_Float(Expression_Int_Literal(lhsValue)), Expression_Float_Literal(rhsValue))) rhsEval.newStore
                                                             | (FloatValue(lhsValue), IntValue(rhsValue)) -> float_operation_eval (Operation_Float_Minus_Float(Expression_Float_Literal(lhsValue), Expression_Int_To_Float(Expression_Int_Literal(rhsValue)))) rhsEval.newStore
                                                             | (IntValue(_), IntValue(_))                 -> int_operation_eval (Operation_Int_Minus_Int(Expression_Identifier_To_Int(lhs), Expression_Identifier_To_Int(rhs))) rhsEval.newStore
-                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use - operator on NULL"))
+                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use - operator here"))
                                                             )
     | Operation_Identifier_Multiply_Identifier(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                             let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
@@ -959,7 +991,7 @@ identifier_operation_eval x currStore = match x with
                                                             | (IntValue(lhsValue), FloatValue(rhsValue)) -> float_operation_eval (Operation_Float_Multiply_Float(Expression_Int_To_Float(Expression_Int_Literal(lhsValue)), Expression_Float_Literal(rhsValue))) rhsEval.newStore
                                                             | (FloatValue(lhsValue), IntValue(rhsValue)) -> float_operation_eval (Operation_Float_Multiply_Float(Expression_Float_Literal(lhsValue), Expression_Int_To_Float(Expression_Int_Literal(rhsValue)))) rhsEval.newStore
                                                             | (IntValue(_), IntValue(_))                 -> int_operation_eval (Operation_Int_Multiply_Int(Expression_Identifier_To_Int(lhs), Expression_Identifier_To_Int(rhs))) rhsEval.newStore
-                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use * operator on NULL"))
+                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use * operator here"))
                                                             )
     | Operation_Identifier_Divide_Identifier(lhs, rhs)   -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                             let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
@@ -973,16 +1005,17 @@ identifier_operation_eval x currStore = match x with
                                                             | (IntValue(lhsValue), FloatValue(rhsValue)) -> float_operation_eval (Operation_Float_Divide_Float(Expression_Int_To_Float(Expression_Int_Literal(lhsValue)), Expression_Float_Literal(rhsValue))) rhsEval.newStore
                                                             | (FloatValue(lhsValue), IntValue(rhsValue)) -> float_operation_eval (Operation_Float_Divide_Float(Expression_Float_Literal(lhsValue), Expression_Int_To_Float(Expression_Int_Literal(rhsValue)))) rhsEval.newStore
                                                             | (IntValue(_), IntValue(_))                 -> int_operation_eval (Operation_Int_Divide_Int(Expression_Identifier_To_Int(lhs), Expression_Identifier_To_Int(rhs))) rhsEval.newStore
-                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use / operator on NULL"))
+                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use / operator here"))
                                                             )
     | Operation_Negate_Identifier(exp)                 -> let expEval = (expression_identifier_eval exp currStore) in
                                                               (
                                                               match expEval.evaluation with
                                                               | FloatValue(fValue)                       -> float_operation_eval (Operation_Negate_Float(Expression_Float_Literal(fValue))) expEval.newStore
                                                               | IntValue(iValue)                         -> int_operation_eval (Operation_Negate_Int(Expression_Int_Literal(iValue))) expEval.newStore
-                                                              | BoolValue(_)                             -> raise (EvaluationError("Cannot use - operator on bools."))
-                                                              | StringValue(_)                           -> raise (EvaluationError("Cannot use - operator on strings."))
-                                                              | NoValue                                  -> raise (EvaluationError ("Cannot use - operator on NULL"))
+                                                              | BoolValue(_)                             -> raise (EvaluationError ("Cannot use - operator on bools."))
+                                                              | StringValue(_)                           -> raise (EvaluationError ("Cannot use - operator on strings."))
+                                                              | Function(_)                              -> raise (EvaluationError ("Cannot use - operator on function name"))
+                                                              | NoValue                                  -> raise (EvaluationError ("Cannot use - operator here"))
                                                               )
 
     | Operation_Identifier_And_Identifier(lhs, rhs)   -> let lhsEval = (expression_identifier_eval lhs currStore) in
@@ -1046,7 +1079,7 @@ identifier_operation_eval x currStore = match x with
                                                             | (IntValue(lhsValue), FloatValue(rhsValue)) -> bool_operation_eval (Operation_Float_Less_Than_Float(Expression_Int_To_Float(Expression_Int_Literal(lhsValue)), Expression_Float_Literal(rhsValue))) rhsEval.newStore
                                                             | (FloatValue(lhsValue), IntValue(rhsValue)) -> bool_operation_eval (Operation_Float_Less_Than_Float(Expression_Float_Literal(lhsValue), Expression_Int_To_Float(Expression_Int_Literal(rhsValue)))) rhsEval.newStore
                                                             | (IntValue(_), IntValue(_))                 -> bool_operation_eval (Operation_Int_Less_Than_Int(Expression_Identifier_To_Int(lhs), Expression_Identifier_To_Int(rhs))) rhsEval.newStore
-                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use < operator on NULL"))
+                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use < operator here"))
                                                             )
     | Operation_Identifier_Greater_Than_Identifier(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                             let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
@@ -1060,7 +1093,7 @@ identifier_operation_eval x currStore = match x with
                                                             | (IntValue(lhsValue), FloatValue(rhsValue)) -> bool_operation_eval (Operation_Float_Greater_Than_Float(Expression_Int_To_Float(Expression_Int_Literal(lhsValue)), Expression_Float_Literal(rhsValue))) rhsEval.newStore
                                                             | (FloatValue(lhsValue), IntValue(rhsValue)) -> bool_operation_eval (Operation_Float_Greater_Than_Float(Expression_Float_Literal(lhsValue), Expression_Int_To_Float(Expression_Int_Literal(rhsValue)))) rhsEval.newStore
                                                             | (IntValue(_), IntValue(_))                 -> bool_operation_eval (Operation_Int_Greater_Than_Int(Expression_Identifier_To_Int(lhs), Expression_Identifier_To_Int(rhs))) rhsEval.newStore
-                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use > operator on NULL"))
+                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use > operator here"))
                                                             )
     | Operation_Identifier_Less_Than_Or_Eq_Identifier(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                             let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
@@ -1074,7 +1107,7 @@ identifier_operation_eval x currStore = match x with
                                                             | (IntValue(lhsValue), FloatValue(rhsValue)) -> bool_operation_eval (Operation_Float_Less_Than_Or_Eq_Float(Expression_Int_To_Float(Expression_Int_Literal(lhsValue)), Expression_Float_Literal(rhsValue))) rhsEval.newStore
                                                             | (FloatValue(lhsValue), IntValue(rhsValue)) -> bool_operation_eval (Operation_Float_Less_Than_Or_Eq_Float(Expression_Float_Literal(lhsValue), Expression_Int_To_Float(Expression_Int_Literal(rhsValue)))) rhsEval.newStore
                                                             | (IntValue(_), IntValue(_))                 -> bool_operation_eval (Operation_Int_Less_Than_Or_Eq_Int(Expression_Identifier_To_Int(lhs), Expression_Identifier_To_Int(rhs))) rhsEval.newStore
-                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use <= operator on NULL"))
+                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use <= operator here"))
                                                             )
     | Operation_Identifier_Greater_Than_Or_Eq_Identifier(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                             let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
@@ -1088,7 +1121,7 @@ identifier_operation_eval x currStore = match x with
                                                             | (IntValue(lhsValue), FloatValue(rhsValue)) -> bool_operation_eval (Operation_Float_Greater_Than_Or_Eq_Float(Expression_Int_To_Float(Expression_Int_Literal(lhsValue)), Expression_Float_Literal(rhsValue))) rhsEval.newStore
                                                             | (FloatValue(lhsValue), IntValue(rhsValue)) -> bool_operation_eval (Operation_Float_Greater_Than_Or_Eq_Float(Expression_Float_Literal(lhsValue), Expression_Int_To_Float(Expression_Int_Literal(rhsValue)))) rhsEval.newStore
                                                             | (IntValue(_), IntValue(_))                 -> bool_operation_eval (Operation_Int_Greater_Than_Or_Eq_Int(Expression_Identifier_To_Int(lhs), Expression_Identifier_To_Int(rhs))) rhsEval.newStore
-                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use >= operator on NULL"))
+                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use >= operator here"))
                                                             )
     | Operation_Identifier_Eq_Identifier(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                             let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
@@ -1102,7 +1135,7 @@ identifier_operation_eval x currStore = match x with
                                                             | (IntValue(lhsValue), FloatValue(rhsValue)) -> bool_operation_eval (Operation_Float_Eq_Float(Expression_Int_To_Float(Expression_Int_Literal(lhsValue)), Expression_Float_Literal(rhsValue))) rhsEval.newStore
                                                             | (FloatValue(lhsValue), IntValue(rhsValue)) -> bool_operation_eval (Operation_Float_Eq_Float(Expression_Float_Literal(lhsValue), Expression_Int_To_Float(Expression_Int_Literal(rhsValue)))) rhsEval.newStore
                                                             | (IntValue(_), IntValue(_))                 -> bool_operation_eval (Operation_Int_Eq_Int(Expression_Identifier_To_Int(lhs), Expression_Identifier_To_Int(rhs))) rhsEval.newStore
-                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use = operator on NULL"))
+                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use = operator here"))
                                                             )
     | Operation_Identifier_Not_Eq_Identifier(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in
                                                             let rhsEval = (expression_identifier_eval rhs lhsEval.newStore) in
@@ -1116,7 +1149,7 @@ identifier_operation_eval x currStore = match x with
                                                             | (IntValue(lhsValue), FloatValue(rhsValue)) -> bool_operation_eval (Operation_Float_Not_Eq_Float(Expression_Int_To_Float(Expression_Int_Literal(lhsValue)), Expression_Float_Literal(rhsValue))) rhsEval.newStore
                                                             | (FloatValue(lhsValue), IntValue(rhsValue)) -> bool_operation_eval (Operation_Float_Not_Eq_Float(Expression_Float_Literal(lhsValue), Expression_Int_To_Float(Expression_Int_Literal(rhsValue)))) rhsEval.newStore
                                                             | (IntValue(_), IntValue(_))                 -> bool_operation_eval (Operation_Int_Not_Eq_Int(Expression_Identifier_To_Int(lhs), Expression_Identifier_To_Int(rhs))) rhsEval.newStore
-                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use !=/<> operator on NULL"))
+                                                            | (_, _)                                     -> raise (EvaluationError ("Cannot use !=/<> operator here"))
                                                             )
 
     | Operation_Identifier_Concat_Identifier(lhs, rhs) -> let lhsEval = (expression_identifier_eval lhs currStore) in

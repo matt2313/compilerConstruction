@@ -1,6 +1,8 @@
 **[Index](index) / Variables**
 
 # Variables
+
+## Standard Variables
 A variable is assigned with the following syntax:
 ```
 type var_name := exp
@@ -22,4 +24,48 @@ int x = int y = int z = 100;
 Here, both lines will evaluate to `100`. `x`, `y`, `z` store `100` while `w` will store `50`.
 The assignment operator (`:=`) has lower priority than any other operator. If there is ambiguity the operation on the **right** will evaluate first.
 
-**IMPORTANT NOTE: Since the lexer doesn't store any information on what identifiers have been assigned, it will not notice an error if you try to access an unassigned variable**
+## New and Let Statements
+Variables can also be declared by using `new` and `let` statements. For example:
+```
+let int x := 10 in
+new int y := 5 in
+int main()
+{
+    return x * y; // returns 50
+}
+```
+
+While the `new` statement creates variables in the same way as standard variable assignment, the `let` keyword is call-by-name similar to a function. For the code:
+```
+int main()
+{
+    int a := 10;
+    int b := 20;
+    
+    let int count = b - a in
+    while(count > 0)
+    {
+        print_int(count);
+        print_string(" ");
+        a := a - 1;
+    }
+    
+    return 0;
+}
+```
+Will print '10 9 8 7 6 5 4 3 2 1 '. If a `new` statement was used instead the loop would never terminate.
+
+`new` and `let` statements have their own scope, so
+```
+int main()
+{
+    int x := 0;
+    int y := 0;
+    
+    new int x := 10 in
+    y := x;
+    
+    return y; // returns 10, x is still 0
+}
+```
+is valid
