@@ -28,7 +28,7 @@ let extractIntValue x = match x with
                         | Function(_)    -> raise (EvaluationError ("cannot take int value from function name"))
                         | NoValue        -> raise (EvaluationError ("cannot take int value from NULL"))
 let extractFloatValue x = match x with
-                        | IntValue(_)    -> raise (EvaluationError ("cannot take float value from int"))
+                        | IntValue(x)    -> float_of_int x
                         | FloatValue(x)  -> x
                         | BoolValue(_)   -> raise (EvaluationError ("cannot take float value from bool"))
                         | StringValue(_) -> raise (EvaluationError ("cannot take float value from string"))
@@ -363,7 +363,7 @@ expression_float_eval x currStore = match x with
                                                  evalReturn(currStore, FloatValue(float_of_string sVal))
     | Expression_Identifier_To_Float(exp) -> let eval = (expression_identifier_eval exp currStore) in
                                                  match eval.evaluation with
-                                                 | IntValue(iVal)    -> expression_float_eval (Expression_Int_To_Float(Expression_Int_Literal(extractIntValue eval.evaluation))) eval.newStore
+                                                 | IntValue(iVal)    -> expression_float_eval (Expression_Int_To_Float(Expression_Int_Literal(iVal))) eval.newStore
                                                  | FloatValue(fVal)  -> evalReturn(eval.newStore, FloatValue(fVal))
                                                  | BoolValue(bVal)   -> evalReturn(eval.newStore, FloatValue(if bVal then 1.0 else 0.0))
                                                  | StringValue(sVal) -> evalReturn(eval.newStore, FloatValue(float_of_string sVal))

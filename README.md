@@ -35,6 +35,7 @@ Most of the syntax is C-like, implementing the features of the syntax tree given
 * `length(str)` and `substring(str, start, len)` functions are built in to the language
 * All functions must return a value, there is no `void` type
 * I/O operations are performed using the functions `read_int()`, `print_int()`, `read_string()`, etc.
+* `let ... in` and `new ... in` statements are supported
 
 For complete documentation on the syntax, view `/doc/index.md` or look at the example code provided
 

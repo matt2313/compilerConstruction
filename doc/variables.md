@@ -35,7 +35,7 @@ int main()
 }
 ```
 
-While the `new` statement creates variables in the same way as standard variable assignment, the `let` keyword is call-by-name similar to a function. For the code:
+`new` and `let` statements create variables in the same way as standard variable assignment:
 ```
 int main()
 {
@@ -53,7 +53,6 @@ int main()
     return 0;
 }
 ```
-Will print '10 9 8 7 6 5 4 3 2 1 '. If a `new` statement was used instead the loop would never terminate.
 
 `new` and `let` statements have their own scope, so
 ```
@@ -65,7 +64,7 @@ int main()
     new int x := 10 in
     y := x;
     
-    return y; // returns 10, x is still 0
+    return x + y; // returns 10, x is still 0
 }
 ```
 is valid
