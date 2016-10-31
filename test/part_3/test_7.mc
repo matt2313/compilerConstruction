@@ -4,16 +4,16 @@ string makeIs(int count)
 {
     string returnVal := "ERROR";
     
-    if(count <= 0)
+    if(!count <= 0)
     {
         returnVal := "";
     }
     else
     {
-        returnVal := "i" ^ makeIs(count - 1);
-    }
+        returnVal := "i" ^ makeIs(!count - 1);
+    };
     
-    return returnVal;
+    return !returnVal;
 }
 
 string main()

@@ -6,19 +6,19 @@ int main()
     print_string("1, 1");
     int a := 1;
     int b := 1;
-    int c := a + b;
+    int c := !a + !b;
     
-    while(i > 0)
+    while(!i > 0)
     {
-        c := a + b;
+        c := !a + !b;
         
-        print_string(", " ^ (c as string));
+        print_string(", " ^ (!c as string));
         
-        a := b;
-        b := c;
+        a := !b;
+        b := !c;
         
-        i := i - 1;
-    }
+        i := !i - 1;
+    };
     
-    return c;
+    return !c;
 }

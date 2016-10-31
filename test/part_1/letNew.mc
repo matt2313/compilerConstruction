@@ -3,36 +3,36 @@
 int main()
 {
     new bool testBool := false in
-    testBool;
+    !testBool;
     
     let float myFloat := 2.5 in
-    myFloat * 10;
+    !myFloat * 10;
     
     let string myString := "Hello World!" in
-    print_string(myString);
+    print_string(!myString);
     
     let int ret := 0 in
-    return ret;
+    return !ret;
     
     let int a := 1 in
     let int b := 2 in
     let int c := 3 in
-    a + b + c;
+    !a +! b + !c;
     
     new float d := 10 in
     new float e := 20 in
     new float f := 30 in
-    d + e + f;
+    !d + !e + !f;
     
     let bool g := true in
     new bool h := false in
-    g OR h;
+    !g OR !h;
     
     let string i := "Page: " in
     new int j := 10 in
     let string k := ", Line: " in
     new int l := 15 in
-    i ^ (j as string) ^ k ^ (l as string);
+    !i ^ (!j as string) ^ !k ^ (!l as string);
 }
 
 let int x := 5 in

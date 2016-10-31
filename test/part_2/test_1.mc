@@ -4,5 +4,5 @@ int main()
     int b := 10;
     int c := 100;
     
-    return a + b + c; // 111
+    return !a + !b + !c; // 111
 }

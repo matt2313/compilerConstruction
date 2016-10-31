@@ -20,13 +20,14 @@ Repository for the source files and documentation of the MattC compiler, created
   - The compiler will work on any number of files given as arguments
   - The `-v` option can be used to display the full parse tree
   - The `-e` option will evaluate the file after it has been parsed, and display the return value of the main function.
+  - The `-o` option optimises the code before evaluation and compilation
 
 
 ## Syntax in a Nutshell
 
 Most of the syntax is C-like, implementing the features of the syntax tree given. Notable differences are:
 * Assignment is done with `:=` instead of `=`
-* Dereferencing variables is done by simply writing the name of the variable, there is no dereference operator
+* Dereferencing variables is done by using the `!` operator
 * Boolean operations use plain text in upper case (`AND`, `OR`, `NOT`, etc.)
 * Four types are supported: `int`, `float`, `bool`, and `string`
 * Type conversion is done with the keyword `to`, e.g. `50 to string` gives the string `"50"`

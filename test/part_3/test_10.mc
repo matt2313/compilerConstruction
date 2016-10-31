@@ -2,11 +2,11 @@ bool checkPrime(int x)
 {
     bool ret := true;
     
-    if(x < 2)
+    if(!x < 2)
     {
         ret := false;
     }
-    else if (x == 2)
+    else if (!x == 2)
     {
         ret := true;
     }
@@ -14,51 +14,54 @@ bool checkPrime(int x)
     {
         new float i := 2.0 in
         new bool break := false in
-        while(NOT break)
+        while(NOT !break)
         {
-            new float division_f := x / i in
-            new int division_i := x / (i as int) in
-            if(division_f == division_i)
+            new float division_f := !x / !i in
+            new int division_i := !x / (!i as int) in
+            if(!division_f == !division_i)
             {
                 ret := false;
                 break := true;
-            }
+            };
             
-            i := i + 1.0;
+            i := !i + 1.0;
             
-            if(i >= x)
+            if(!i >= !x)
             {
                 break := true;
-            }
-        }
-    }
+            };
+        };
+    };
     
-    return ret;
+    return !ret;
 }
 
 let int start := 2 in
 new int max := -1 in
 int main()
 {
-    while(max < start)
+    /*
+    while(!max < !start)
     {
         print_string("Enter an integer below 1000: ");
         max := read_int();
-    }
+    };
+    */
+    max := 1000;
     
-    print_string("primes up to " ^ (max as string) ^ " are: ");
+    print_string("primes up to " ^ (!max as string) ^ " are: ");
     
-    new int i := start in
-    while(i <= max)
+    new int i := !start in
+    while(!i <= !max)
     {
-        if(checkPrime(i))
+        if(checkPrime(!i))
         {
-            print_int(i);
+            print_int(!i);
             print_string(", ");
-        }
+        };
         
-        i := i + 1;
-    }
+        i := !i + 1;
+    };
     
-    return max; // Returns all primes below the given number
+    return !max; // Returns all primes below the given number
 }

@@ -50,12 +50,12 @@ typename =
 and
 statement =
       Statement_Expression of expression
-    | Statement_While of while_statement
-    | Statement_If of if_statement
     | Statement_Function of function_definition
     | Statement_Return of return_statement
     | Statement_Let of let_statement * statement
     | Statement_New of new_statement * statement
+    | Statement_Let_List of let_statement * statement_list
+    | Statement_New_List of new_statement * statement_list
 and
 expression =
       Expression_Int of expression_int
@@ -100,7 +100,7 @@ expression_int =
     | Expression_Int_Operation of int_operation
     | Expression_Int_Read
     | Expression_Int_Declare of identifier * expression_int
-    | Expression_Int_Assign of identifier * expression_int
+    | Expression_Int_Assign of expression_identifier * expression_int
     
     | Expression_Float_To_Int of expression_float
     | Expression_Bool_To_Int of expression_bool
@@ -112,7 +112,7 @@ expression_float =
     | Expression_Float_Operation of float_operation
     | Expression_Float_Read
     | Expression_Float_Declare of identifier * expression_float
-    | Expression_Float_Assign of identifier * expression_float
+    | Expression_Float_Assign of expression_identifier * expression_float
     
     | Expression_Int_To_Float of expression_int
     | Expression_Bool_To_Float of expression_bool
@@ -124,7 +124,7 @@ expression_bool =
     | Expression_Bool_Operation of bool_operation
     | Expression_Bool_Read
     | Expression_Bool_Declare of identifier * expression_bool
-    | Expression_Bool_Assign of identifier * expression_bool
+    | Expression_Bool_Assign of expression_identifier * expression_bool
     
     | Expression_Int_To_Bool of expression_int
     | Expression_Float_To_Bool of expression_float
@@ -136,7 +136,7 @@ expression_string =
     | Expression_String_Operation of string_operation
     | Expression_String_Read
     | Expression_String_Declare of identifier * expression_string
-    | Expression_String_Assign of identifier * expression_string
+    | Expression_String_Assign of expression_identifier * expression_string
     
     | Expression_Int_To_String of expression_int
     | Expression_Float_To_String of expression_float
@@ -152,7 +152,11 @@ expression_identifier =
     | Expression_Identifier_Declare_Float of identifier * expression_identifier
     | Expression_Identifier_Declare_Bool of identifier * expression_identifier
     | Expression_Identifier_Declare_String of identifier * expression_identifier
-    | Expression_Identifier_Assign of identifier * expression_identifier
+    | Expression_Identifier_Assign of expression_identifier * expression_identifier
+    
+    | Expression_Identifier_Variable_Ref of identifier
+    | Statement_While of while_statement
+    | Statement_If of if_statement
 and
 int_operation =
       Operation_Int_Plus_Int of expression_int * expression_int
@@ -360,15 +364,15 @@ typename_toString x = match x with
     | String -> "String"
 and
 statement_toString x numTabs tabChars = match x with
-    | Statement_Expression(exp) -> expression_toString exp
-    | Statement_While(whileStat) -> while_statement_toString whileStat numTabs tabChars
-    | Statement_If(ifStat) -> if_statement_toString ifStat numTabs tabChars
+    | Statement_Expression(exp) -> expression_toString exp numTabs tabChars
     | Statement_Function(func) -> function_definition_toString func numTabs tabChars
     | Statement_Return(ret) -> return_statement_toString ret
     | Statement_Let(letStat, stat) -> (let_statement_toString letStat) ^ "\n" ^ (repeatChars numTabs tabChars) ^ (statement_toString stat numTabs tabChars)
     | Statement_New(newStat, stat) -> (new_statement_toString newStat) ^ "\n" ^ (repeatChars numTabs tabChars) ^ (statement_toString stat numTabs tabChars)
+    | Statement_Let_List(newStat, lst) -> (let_statement_toString newStat) ^ "\n" ^ (repeatChars numTabs tabChars) ^ (statement_list_toString lst (numTabs + 1) tabChars)
+    | Statement_New_List(newStat, lst) -> (new_statement_toString newStat) ^ "\n" ^ (repeatChars numTabs tabChars) ^ (statement_list_toString lst (numTabs + 1) tabChars)
 and
-expression_toString x = match x with
+expression_toString x numTabs tabChars = match x with
     | Expression_Int(exp) -> expression_int_toString exp
     | Expression_Float(exp) -> expression_float_toString exp
     | Expression_Bool(exp) -> expression_bool_toString exp
@@ -411,7 +415,7 @@ expression_int_toString x = match x with
     | Expression_Int_Operation(op) -> int_operation_toString op
     | Expression_Int_Read -> "int input"
     | Expression_Int_Declare(iden, exp) -> "declare (" ^ (identifier_toString iden) ^ ") with value (" ^ (expression_int_toString exp) ^ ")"
-    | Expression_Int_Assign(iden, exp) -> "assign (" ^ (identifier_toString iden) ^ ") with value (" ^ (expression_int_toString exp) ^ ")"
+    | Expression_Int_Assign(iden, exp) -> "assign (" ^ (expression_identifier_toString iden) ^ ") with value (" ^ (expression_int_toString exp) ^ ")"
     | Expression_Float_To_Int(exp) -> "cast float to int(" ^ (expression_float_toString exp) ^ ")"
     | Expression_Bool_To_Int(exp) -> "cast bool to int(" ^ (expression_bool_toString exp) ^ ")"
     | Expression_String_To_Int(exp) -> "cast string to int(" ^ (expression_string_toString exp) ^ ")"
@@ -422,7 +426,7 @@ expression_float_toString x = match x with
     | Expression_Float_Operation(op) -> float_operation_toString op
     | Expression_Float_Read -> "float input"
     | Expression_Float_Declare(iden, exp) -> "declare (" ^ (identifier_toString iden) ^ ") with value (" ^ (expression_float_toString exp) ^ ")"
-    | Expression_Float_Assign(iden, exp) -> "assign (" ^ (identifier_toString iden) ^ ") with value (" ^ (expression_float_toString exp) ^ ")"
+    | Expression_Float_Assign(iden, exp) -> "assign (" ^ (expression_identifier_toString iden) ^ ") with value (" ^ (expression_float_toString exp) ^ ")"
     | Expression_Int_To_Float(exp) -> "cast int to float(" ^ (expression_int_toString exp)^ ")"
     | Expression_Bool_To_Float(exp) -> "cast bool to float(" ^ (expression_bool_toString exp) ^ ")"
     | Expression_String_To_Float(exp) -> "cast string to float(" ^ (expression_string_toString exp) ^ ")"
@@ -433,7 +437,7 @@ expression_bool_toString x = match x with
     | Expression_Bool_Operation(op) -> bool_operation_toString op
     | Expression_Bool_Read -> "bool input"
     | Expression_Bool_Declare(iden, exp) -> "declare (" ^ (identifier_toString iden) ^ ") with value (" ^ (expression_bool_toString exp) ^ ")"
-    | Expression_Bool_Assign(iden, exp) -> "assign (" ^ (identifier_toString iden) ^ ") with value (" ^ (expression_bool_toString exp) ^ ")"
+    | Expression_Bool_Assign(iden, exp) -> "assign (" ^ (expression_identifier_toString iden) ^ ") with value (" ^ (expression_bool_toString exp) ^ ")"
     | Expression_Int_To_Bool(exp) -> "cast int to bool(" ^ (expression_int_toString exp) ^ ")"
     | Expression_Float_To_Bool(exp) -> "cast float to bool(" ^ (expression_float_toString exp) ^ ")"
     | Expression_String_To_Bool(exp) -> "cast string to bool(" ^ (expression_string_toString exp) ^ ")"
@@ -444,7 +448,7 @@ expression_string_toString x = match x with
     | Expression_String_Operation(op) -> string_operation_toString op
     | Expression_String_Read -> "string input"
     | Expression_String_Declare(iden, exp) -> "declare (" ^ (identifier_toString iden) ^ ") with value (" ^ (expression_string_toString exp) ^ ")"
-    | Expression_String_Assign(iden, exp) -> "assign (" ^ (identifier_toString iden) ^ ") with value (" ^ (expression_string_toString exp) ^ ")"
+    | Expression_String_Assign(iden, exp) -> "assign (" ^ (expression_identifier_toString iden) ^ ") with value (" ^ (expression_string_toString exp) ^ ")"
     | Expression_Int_To_String(exp) -> "cast int to string(" ^ (expression_int_toString exp) ^ ")"
     | Expression_Float_To_String(exp) -> "cast float to string(" ^ (expression_float_toString exp) ^ ")"
     | Expression_Bool_To_String(exp) -> "cast bool to string(" ^ (expression_bool_toString exp) ^ ")"
@@ -458,7 +462,14 @@ expression_identifier_toString x = match x with
     | Expression_Identifier_Declare_Float(iden, exp) -> "declare (" ^ (identifier_toString iden) ^ ") with value (" ^ (expression_identifier_toString exp) ^ ")"
     | Expression_Identifier_Declare_Bool(iden, exp) -> "declare (" ^ (identifier_toString iden) ^ ") with value (" ^ (expression_identifier_toString exp) ^ ")"
     | Expression_Identifier_Declare_String(iden, exp) -> "declare (" ^ (identifier_toString iden) ^ ") with value (" ^ (expression_identifier_toString exp) ^ ")"
-    | Expression_Identifier_Assign(iden, exp) -> "assign (" ^ (identifier_toString iden) ^ ") with value (" ^ (expression_identifier_toString exp) ^ ")"
+    | Expression_Identifier_Assign(iden, exp) -> "assign (" ^ (expression_identifier_toString iden) ^ ") with value (" ^ (expression_identifier_toString exp) ^ ")"
+    | Expression_Identifier_Variable_Ref(iden) -> "variable reference(" ^ (identifier_toString iden) ^ ")"
+    (*
+    | Statement_While(whileStat) -> while_statement_toString whileStat numTabs tabChars
+    | Statement_If(ifStat) -> if_statement_toString ifStat numTabs tabChars
+    *)
+    | Statement_While(whileStat) -> while_statement_toString whileStat 0 ""
+    | Statement_If(ifStat) -> if_statement_toString ifStat 0 ""
 and
 int_operation_toString x = match x with
     | Operation_Int_Plus_Int(lhs, rhs) -> "add(" ^ (expression_int_toString lhs) ^ ", " ^ (expression_int_toString rhs) ^ ")"
@@ -607,8 +618,8 @@ identifier_operation_toString x = match x with
     | Operation_Substring_Identifier_Identifier_Identifier(strExp, startExp, lenExp) -> "substring(" ^ (expression_identifier_toString strExp) ^ ", " ^ (expression_identifier_toString startExp) ^ ", " ^ (expression_identifier_toString lenExp) ^ ")"
 and
 parameter_list_toString x = match x with
-    | Parameter_List_Element(exp) -> expression_toString exp
-    | Parameter_List_List(exp, paramList) -> (expression_toString exp) ^ ", " ^ (parameter_list_toString paramList)
+    | Parameter_List_Element(exp) -> expression_toString exp 0 ""
+    | Parameter_List_List(exp, paramList) -> (expression_toString exp 0 "") ^ ", " ^ (parameter_list_toString paramList)
     | Parameter_List_Empty -> "no params"
     
 let string_of_parseTree tree = parseTree_toString tree 0 "  "

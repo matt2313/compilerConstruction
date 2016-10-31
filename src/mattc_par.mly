@@ -13,6 +13,7 @@
 %token STRING_TYPENAME
 %token <string> IDENTIFIER  /* Name of a variable or function */
 %token ASSIGN               /* Assignment operator */
+%token DEREF                /* Dereference operator */
 %token RETURN               /* Return statement to be used in function definitions */
 %token CAST                 /* Explicitly cast expression to another type */
 %token LET
@@ -94,7 +95,8 @@
 %left DIVIDE
 %nonassoc NEGATE
 
-%left CONCAT       /* Highest precedence */
+%left CONCAT
+%nonassoc DEREF     /* Highest precedence */
 
 %start start
 %type <ParseTreeType.parseTree> start
@@ -124,12 +126,12 @@ scoped_statement_list:
 
 statement:
     | exp EOE                           { Statement_Expression($1) }
-    | while_loop                        { Statement_While($1) }
-    | if_statement                      { Statement_If($1) }
     | function_definition               { Statement_Function($1) }
     | return_statement EOE              { Statement_Return($1) }
     | let_statement statement           { Statement_Let($1, $2) }
     | new_statement statement           { Statement_New($1, $2) }
+    | let_statement scoped_statement_list       { Statement_Let_List($1, $2) }
+    | new_statement scoped_statement_list       { Statement_New_List($1, $2) }
 ;
 
 exp:
@@ -144,8 +146,8 @@ exp:
 while_loop:
     | WHILE exp_identifier scoped_statement_list        { While_Loop_While(Expression_Identifier_To_Bool($2), $3) }
     | WHILE exp_bool scoped_statement_list              { While_Loop_While($2, $3) }
-    | DO scoped_statement_list WHILE exp_bool EOE       { While_Loop_Do($2, $4) }
-    | DO scoped_statement_list WHILE exp_identifier EOE { While_Loop_Do($2, Expression_Identifier_To_Bool($4)) }
+    | DO scoped_statement_list WHILE exp_bool           { While_Loop_Do($2, $4) }
+    | DO scoped_statement_list WHILE exp_identifier     { While_Loop_Do($2, Expression_Identifier_To_Bool($4)) }
 ;
 
 if_statement:
@@ -243,7 +245,7 @@ exp_int:
     | operation_int                             { Expression_Int_Operation($1) }
     | READ_INT OPBRACKET CLBRACKET              { Expression_Int_Read }
     | INT_TYPENAME IDENTIFIER ASSIGN exp_int    { Expression_Int_Declare(Identifier_Declaration(Int, $2), $4) }
-    | IDENTIFIER ASSIGN exp_int                 { Expression_Int_Assign(Identifier_Reference($1), $3) }
+    | exp_identifier ASSIGN exp_int             { Expression_Int_Assign($1, $3) }
     
     | exp_int CAST INT_TYPENAME                 { $1 }
     | exp_float CAST INT_TYPENAME               { Expression_Float_To_Int($1) }
@@ -259,7 +261,7 @@ exp_float:
     | READ_FLOAT OPBRACKET CLBRACKET    { Expression_Float_Read }
     | FLOAT_TYPENAME IDENTIFIER ASSIGN exp_float    { Expression_Float_Declare(Identifier_Declaration(Float, $2), $4) }
     | FLOAT_TYPENAME IDENTIFIER ASSIGN exp_int      { Expression_Float_Declare(Identifier_Declaration(Float, $2), Expression_Int_To_Float($4)) }
-    | IDENTIFIER ASSIGN exp_float       { Expression_Float_Assign(Identifier_Reference($1), $3) }
+    | exp_identifier ASSIGN exp_float   { Expression_Float_Assign($1, $3) }
     
     | exp_float CAST FLOAT_TYPENAME     { $1 }
     | exp_int CAST FLOAT_TYPENAME       { Expression_Int_To_Float($1) }
@@ -274,7 +276,7 @@ exp_bool:
     | operation_bool                    { Expression_Bool_Operation($1) }
     | READ_BOOL OPBRACKET CLBRACKET     { Expression_Bool_Read }
     | BOOL_TYPENAME IDENTIFIER ASSIGN exp_bool      { Expression_Bool_Declare(Identifier_Declaration(Bool, $2), $4) }
-    | IDENTIFIER ASSIGN exp_bool        { Expression_Bool_Assign(Identifier_Reference($1), $3) }
+    | exp_identifier ASSIGN exp_bool    { Expression_Bool_Assign($1, $3) }
     
     | exp_bool CAST BOOL_TYPENAME       { $1 }
     | exp_int CAST BOOL_TYPENAME        { Expression_Int_To_Bool($1) }
@@ -289,7 +291,7 @@ exp_string:
     | operation_string                  { Expression_String_Operation($1) }
     | READ_STRING OPBRACKET CLBRACKET   { Expression_String_Read }
     | STRING_TYPENAME IDENTIFIER ASSIGN exp_string  { Expression_String_Declare(Identifier_Declaration(String, $2), $4) }
-    | IDENTIFIER ASSIGN exp_string      { Expression_String_Assign(Identifier_Reference($1), $3) }
+    | exp_identifier ASSIGN exp_string  { Expression_String_Assign($1, $3) }
     
     | exp_string CAST STRING_TYPENAME   { $1 }
     | exp_int CAST STRING_TYPENAME      { Expression_Int_To_String($1) }
@@ -300,7 +302,7 @@ exp_string:
 
 exp_identifier:
     | OPBRACKET exp_identifier CLBRACKET    { $2 }
-    | IDENTIFIER                            { Expression_Identifier_Dereference(Identifier_Reference($1)) }
+    | DEREF IDENTIFIER                      { Expression_Identifier_Dereference(Identifier_Reference($2)) }
     | operation_identifier                  { Expression_Identifier_Operation($1) }
     | IDENTIFIER bracketed_param_list       { Expression_Identifier_Function_Call(Identifier_Reference($1), $2) }
     
@@ -308,7 +310,12 @@ exp_identifier:
     | FLOAT_TYPENAME IDENTIFIER ASSIGN exp_identifier   { Expression_Identifier_Declare_Float(Identifier_Declaration(Float, $2), $4) }
     | BOOL_TYPENAME IDENTIFIER ASSIGN exp_identifier    { Expression_Identifier_Declare_Bool(Identifier_Declaration(Bool, $2), $4) }
     | STRING_TYPENAME IDENTIFIER ASSIGN exp_identifier  { Expression_Identifier_Declare_String(Identifier_Declaration(String, $2), $4) }
-    | IDENTIFIER ASSIGN exp_identifier                  { Expression_Identifier_Assign(Identifier_Reference($1), $3) }
+    | exp_identifier ASSIGN exp_identifier              { Expression_Identifier_Assign($1, $3) }
+    
+    | IDENTIFIER                                        { Expression_Identifier_Variable_Ref(Identifier_Reference($1)) }
+    
+    | while_loop                            { Statement_While($1) }
+    | if_statement                          { Statement_If($1) }
 ;
 
 operation_int:

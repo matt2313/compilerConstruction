@@ -4,5 +4,5 @@ float main()
     float b := 1.;
     float c := 10.;
     
-    return a + b + c; // 11.1
+    return !a + !b + !c; // 11.1
 }

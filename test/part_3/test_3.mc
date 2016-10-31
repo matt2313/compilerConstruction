@@ -8,7 +8,7 @@ int main()
     
     let int c := 2 in
     let int d := 100 in
-    ret := (a * b * c * d) as int;
+    ret := (!a * !b * !c * !d) as int;
     
-    return ret; // 6283
+    return !ret; // 6283
 }

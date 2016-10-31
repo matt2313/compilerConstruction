@@ -6,6 +6,7 @@ open Lexing
 
 let verbose = ref false
 let evaluateFile = ref false
+let optimise = ref false
 
 let getPosition lexbuf =
     let pos = lexbuf.lex_curr_p in
@@ -52,7 +53,8 @@ let parseFile filename =
 
 let _ =
     let specList = [("-v", Arg.Set verbose, "Prints evaluations of lines as they are parsed");
-                    ("-e", Arg.Set evaluateFile, "Evaluates the program after it has been parsed")] in
+                    ("-e", Arg.Set evaluateFile, "Evaluates the program after it has been parsed");
+                    ("-o", Arg.Set optimise, "Optimises the program before evaluation and compilation")] in
     let usageMessage = "Compiles MattC Programs" in
     Arg.parse specList parseFile usageMessage;
     print_endline "All files parsed correctly"

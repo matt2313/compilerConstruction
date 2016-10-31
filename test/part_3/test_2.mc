@@ -8,38 +8,38 @@ int main()
     int d := -1;
     int e := -1;
     
-    let int c := a * b * c in
-    if(c == 100) // true
+    let int c := !a * !b * !c in
+    if(!c == 100) // true
     {
-        d := c;
+        d := !c;
     }
     else
     {
         d := 0;
-    }
+    };
     
-    if(c == 50) // false
+    if(!c == 50) // false
     {
         int f := 50;
-        e := f;
+        e := !f;
     }
-    else if(c > 50) // false
+    else if(!c > 50) // false
     {
         int f := 45;
-        e := f;
+        e := !f;
     }
     else
     {
         int f := 55;
         
-        if(f / 5 == 11)
+        if(!f / 5 == 11)
         {
             int e := 10;
-            f := f - 10;
-        }
+            f := !f - 10;
+        };
         
-        e := f;
-    }
+        e := !f;
+    };
     
-    return c * d + e; // 245
+    return !c * !d + !e; // 245
 }
