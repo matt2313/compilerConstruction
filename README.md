@@ -20,6 +20,8 @@ Repository for the source files and documentation of the MattC compiler, created
   - The compiler will work on any number of files given as arguments
   - The `-v` option can be used to display the full parse tree
   - The `-e` option will evaluate the file after it has been parsed, and display the return value of the main function.
+  - The `-i` option specifies a file to use as input for read functions wile evaluating
+  - The `-terminalInput` option sets the input to come directly from the terminal. (This is the default setting)
   - The `-o` option optimises the code before evaluation and compilation
 
 
@@ -43,4 +45,4 @@ For complete documentation on the syntax, view `/doc/index.md` or look at the ex
 
 ## Test Code
 
-Test code can be found in the `/test/` directory. There is also a script for each part that will run all the test files in one go in each part's respective folder.
+Test code can be found in the `/test/` directory. There is a script to run all the tests cases at once, as well as a script for each part that will run all the test files for each part's respective folder.

@@ -71,7 +71,7 @@
 
 %right RETURN       /* Lowest precedence */
 %right ASSIGN
-
+%nonassoc WHILE
 %left CAST
 
 %left AND

@@ -183,10 +183,24 @@ let read_bool x =
 
 
 
+let readInt_function = ref (read_int)
+let readFloat_function = ref (read_float)
+let readBool_function = ref (read_bool)
+let readString_function = ref (read_line)
+
+
+
 (* Code for the evaluation of a parse tree *)
 let mainFunctionName = "main"
 
-let rec parseTree_eval x currStore = match x with
+let rec evaluateParseTree x read_int_func read_float_func read_bool_func read_string_func =
+    readInt_function := read_int_func;
+    readFloat_function := read_float_func;
+    readBool_function := read_bool_func;
+    readString_function := read_string_func;
+    parseTree_eval x emptyStore
+and
+parseTree_eval x currStore = match x with
     | ParseTree_Functions(funcList) -> function_list_eval funcList currStore
     | ParseTree_Empty -> evalReturn(currStore, NoValue)
 and
@@ -337,7 +351,7 @@ and
 expression_int_eval x currStore = match x with
     | Expression_Int_Literal(iVal)      -> evalReturn(currStore, IntValue(iVal))
     | Expression_Int_Operation(op)      -> int_operation_eval op currStore
-    | Expression_Int_Read               -> evalReturn(currStore, IntValue(read_int ()))
+    | Expression_Int_Read               -> evalReturn(currStore, IntValue(!readInt_function ()))
     | Expression_Int_Declare(iden, exp) -> let eval = (expression_int_eval exp currStore) in let currStore' = eval.newStore in identifier_declare iden currStore' eval.evaluation
     | Expression_Int_Assign(iden, exp)  -> let eval  = expression_identifier_eval iden currStore in
                                            let eval' = (expression_int_eval exp currStore) in
@@ -364,7 +378,7 @@ and
 expression_float_eval x currStore = match x with
     | Expression_Float_Literal(fVal)      -> evalReturn(currStore, FloatValue(fVal))
     | Expression_Float_Operation(op)      -> float_operation_eval op currStore
-    | Expression_Float_Read               -> evalReturn(currStore, FloatValue(read_float()))
+    | Expression_Float_Read               -> evalReturn(currStore, FloatValue(!readFloat_function ()))
     | Expression_Float_Declare(iden, exp) -> let eval = (expression_float_eval exp currStore) in let currStore' = eval.newStore in identifier_declare iden currStore' eval.evaluation
     | Expression_Float_Assign(iden, exp)  -> let eval  = expression_identifier_eval iden currStore in
                                              let eval' = (expression_float_eval exp currStore) in
@@ -391,7 +405,7 @@ and
 expression_bool_eval x currStore = match x with
     | Expression_Bool_Literal(bVal)      -> evalReturn(currStore, BoolValue(bVal))
     | Expression_Bool_Operation(op)      -> bool_operation_eval op currStore
-    | Expression_Bool_Read               -> evalReturn(currStore, BoolValue(read_bool ()))
+    | Expression_Bool_Read               -> evalReturn(currStore, BoolValue(!readBool_function ()))
     | Expression_Bool_Declare(iden, exp) -> let eval = (expression_bool_eval exp currStore) in let currStore' = eval.newStore in identifier_declare iden currStore' eval.evaluation
     | Expression_Bool_Assign(iden, exp)  -> let eval  = expression_identifier_eval iden currStore in
                                             let eval' = (expression_bool_eval exp currStore) in
@@ -418,7 +432,7 @@ and
 expression_string_eval x currStore = match x with
     | Expression_String_Literal(sVal)      -> evalReturn(currStore, StringValue(sVal))
     | Expression_String_Operation(op)      -> string_operation_eval op currStore
-    | Expression_String_Read               -> evalReturn(currStore, StringValue(read_line ()))
+    | Expression_String_Read               -> evalReturn(currStore, StringValue(!readString_function ()))
     | Expression_String_Declare(iden, exp) -> let eval = (expression_string_eval exp currStore) in let currStore' = eval.newStore in identifier_declare iden currStore' eval.evaluation
     | Expression_String_Assign(iden, exp)  -> let eval  = expression_identifier_eval iden currStore in
                                               let eval' = (expression_string_eval exp currStore) in

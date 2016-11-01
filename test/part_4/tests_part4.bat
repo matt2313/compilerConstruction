@@ -1,3 +1,3 @@
 @ECHO off
 REM This script runs the test code for the MattC compiler
-"../../src/mattc" -e -o "test_1.mc" "test_2.mc" "test_3.mc" "test_4.mc" "test_5.mc" "test_6.mc" "test_7.mc" "test_8.mc" "test_9.mc" "test_10.mc"
+"../../src/mattc" -e -o -i "test_1.data" "test_1.mc" "test_2.mc" "test_3.mc" "test_4.mc" "test_5.mc" "test_6.mc" "test_7.mc" "test_8.mc" "test_9.mc" "test_10.mc"

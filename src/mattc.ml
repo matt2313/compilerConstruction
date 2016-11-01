@@ -1,12 +1,21 @@
 open ParseTreeType
 open ParseTreeEvaluator
+open ParseTreeOptimiser
 open Mattc_par
 open Mattc_lex
 open Lexing
 
+type inputType =
+    | TerminalInput
+    | FileInput of string
+    
 let verbose = ref false
 let evaluateFile = ref false
 let optimise = ref false
+let input = ref TerminalInput
+
+let setInputFilename name = input := FileInput(name)
+let setTerminalInput () = input := TerminalInput
 
 let getPosition lexbuf =
     let pos = lexbuf.lex_curr_p in
@@ -25,7 +34,16 @@ let parseWithoutErrors = Mattc_par.start Mattc_lex.read
 
 let printFileResult x filename =
     if !evaluateFile then
-        try let eval = parseTree_eval x emptyStore in print_endline ""; print_endline ("File '" ^ filename ^ "' parsed correctly with value: " ^ (valueToString eval.evaluation)) with
+        try let eval = (match !input with
+                              | TerminalInput            -> evaluateParseTree x (read_int) (read_float) (read_bool) (read_line)
+                              | FileInput(inputFileName) -> let inputFileIn = open_in inputFileName in
+                                                            let intFromFile () = int_of_string (input_line inputFileIn) in
+                                                            let floatFromFile () = float_of_string (input_line inputFileIn) in
+                                                            let boolFromFile () = bool_of_string (input_line inputFileIn) in
+                                                            let stringFromFile () = input_line inputFileIn in
+                                                            evaluateParseTree x (intFromFile) (floatFromFile) (boolFromFile) (stringFromFile)
+                       ) in print_endline ""; print_endline ("File '" ^ filename ^ "' parsed correctly with value: " ^ (valueToString eval.evaluation))
+            with
         | EvaluationError message -> prerr_string("Evaluation error in '" ^ filename ^ "' (" ^ message ^ ")");
                                      exit(-1)
     else
@@ -54,6 +72,8 @@ let parseFile filename =
 let _ =
     let specList = [("-v", Arg.Set verbose, "Prints evaluations of lines as they are parsed");
                     ("-e", Arg.Set evaluateFile, "Evaluates the program after it has been parsed");
+                    ("-i", Arg.String setInputFilename, "Sets the file to use as input");
+                    ("-terminalInput", Arg.Unit setTerminalInput, "Sets the terminal to be used as input");
                     ("-o", Arg.Set optimise, "Optimises the program before evaluation and compilation")] in
     let usageMessage = "Compiles MattC Programs" in
     Arg.parse specList parseFile usageMessage;
