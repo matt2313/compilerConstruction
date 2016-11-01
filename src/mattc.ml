@@ -10,6 +10,7 @@ type inputType =
     | FileInput of string
     
 let verbose = ref false
+let verboseAfterOptimisation = ref false
 let evaluateFile = ref false
 let optimise = ref false
 let input = ref TerminalInput
@@ -42,39 +43,32 @@ let printFileResult x filename =
                                                             let boolFromFile () = bool_of_string (input_line inputFileIn) in
                                                             let stringFromFile () = input_line inputFileIn in
                                                             evaluateParseTree x (intFromFile) (floatFromFile) (boolFromFile) (stringFromFile)
-                       ) in print_endline ""; print_endline ("File '" ^ filename ^ "' parsed correctly with value: " ^ (valueToString eval.evaluation))
+                       ) in print_endline ("File '" ^ filename ^ "' parsed correctly with value: " ^ (valueToString eval.evaluation))
             with
         | EvaluationError message -> prerr_string("Evaluation error in '" ^ filename ^ "' (" ^ message ^ ")");
                                      exit(-1)
     else
         print_endline ("File '" ^ filename ^ "' parsed correctly.")
-
-let parseFile_quiet filename =
-    let fileIn = open_in filename in
-    let tree = Lexing.from_channel fileIn
-    |> parseWithErrors filename in
-    close_in fileIn;
-    printFileResult tree filename
-
-let parseFile_verbose filename =
-    let fileIn = open_in filename in
-    let tree = Lexing.from_channel fileIn
-    |> parseWithErrors filename in
-    print_endline (string_of_parseTree tree);
-    close_in fileIn;
-    printFileResult tree filename
     
 let parseFile filename =
-    if !verbose
-    then parseFile_verbose filename
-    else parseFile_quiet filename
+    let fileIn = open_in filename in
+    let tree = Lexing.from_channel fileIn
+    |> parseWithErrors filename in
+    if !verbose then print_endline ("Parse tree for raw '" ^ filename ^ "':"); print_endline (string_of_parseTree tree);
+    close_in fileIn;
+    let tree = if !optimise then optimiseParseTree tree else tree in
+    if !verboseAfterOptimisation && !optimise then print_endline ("Parse tree for optimised '" ^ filename ^ "':"); print_endline (string_of_parseTree tree);
+    printFileResult tree filename;
+    print_endline "";
+    print_endline ""
 
 let _ =
-    let specList = [("-v", Arg.Set verbose, "Prints evaluations of lines as they are parsed");
+    let specList = [("-v", Arg.Set verbose, "Prints the parse tree before optimisation");
                     ("-e", Arg.Set evaluateFile, "Evaluates the program after it has been parsed");
                     ("-i", Arg.String setInputFilename, "Sets the file to use as input");
                     ("-terminalInput", Arg.Unit setTerminalInput, "Sets the terminal to be used as input");
-                    ("-o", Arg.Set optimise, "Optimises the program before evaluation and compilation")] in
+                    ("-o", Arg.Set optimise, "Optimises the program before evaluation and compilation");
+                    ("-ov", Arg.Set verboseAfterOptimisation, "Prints the parse tree after optimisation")] in
     let usageMessage = "Compiles MattC Programs" in
     Arg.parse specList parseFile usageMessage;
     print_endline "All files parsed correctly"

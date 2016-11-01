@@ -18,11 +18,12 @@ Repository for the source files and documentation of the MattC compiler, created
   - `mattc.ml` will normally show lots of warnings about incomplete pattern matching when compiled, until the issue is fixed these warnings are being suppressed by the compile script
 3. You can then run `mattc <filename>`, where `<filename>` is the file you want to compile. MattC files use the `.mc` file extension
   - The compiler will work on any number of files given as arguments
-  - The `-v` option can be used to display the full parse tree
+  - The `-v` option prints the full parse tree
   - The `-e` option will evaluate the file after it has been parsed, and display the return value of the main function.
   - The `-i` option specifies a file to use as input for read functions wile evaluating
   - The `-terminalInput` option sets the input to come directly from the terminal. (This is the default setting)
   - The `-o` option optimises the code before evaluation and compilation
+  - The `-ov` option prints the optimised parse tree, has no effect unless `-o` is also set
 
 
 ## Syntax in a Nutshell

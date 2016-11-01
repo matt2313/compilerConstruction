@@ -1,6 +1,7 @@
 open ParseTreeType
 
 exception EvaluationError of string
+exception OptimisationError of string
 
 
 
@@ -12,6 +13,7 @@ type value =
     | StringValue of string
     | Function of function_definition
     | VariableRef of string
+    | Unknown
     | NoValue
 let valueToString x = match x with
     | IntValue(x)    -> "Int(" ^ string_of_int x ^ ")"
@@ -20,6 +22,7 @@ let valueToString x = match x with
     | StringValue(x) -> "String(" ^ x ^ ")"
     | Function(x)    -> function_definition_toString x 0 "  "
     | VariableRef(x) -> "Variable Ref(" ^ x ^ ")"
+    | Unknown        -> "Unknown"
     | NoValue        -> "NULL"
     
 let extractIntValue x = match x with
@@ -29,6 +32,7 @@ let extractIntValue x = match x with
                         | StringValue(_) -> raise (EvaluationError ("cannot take int value from string"))
                         | Function(_)    -> raise (EvaluationError ("cannot take int value from function name"))
                         | VariableRef(_) -> raise (EvaluationError ("cannot take int value from variable reference"))
+                        | Unknown        -> raise (OptimisationError ("cannot take int value from unknown value"))
                         | NoValue        -> raise (EvaluationError ("cannot take int value from NULL"))
 let extractFloatValue x = match x with
                         | IntValue(x)    -> float_of_int x
@@ -37,6 +41,7 @@ let extractFloatValue x = match x with
                         | StringValue(_) -> raise (EvaluationError ("cannot take float value from string"))
                         | Function(_)    -> raise (EvaluationError ("cannot take float value from function name"))
                         | VariableRef(_) -> raise (EvaluationError ("cannot take float value from variable reference"))
+                        | Unknown        -> raise (OptimisationError ("cannot take float value from unknown value"))
                         | NoValue        -> raise (EvaluationError ("cannot take float value from NULL"))
 let extractBoolValue x = match x with
                         | IntValue(_)    -> raise (EvaluationError ("cannot take bool value from int"))
@@ -45,6 +50,7 @@ let extractBoolValue x = match x with
                         | StringValue(_) -> raise (EvaluationError ("cannot take bool value from string"))
                         | Function(_)    -> raise (EvaluationError ("cannot take bool value from function name"))
                         | VariableRef(_) -> raise (EvaluationError ("cannot take bool value from variable reference"))
+                        | Unknown        -> raise (OptimisationError ("cannot take bool value from unknown value"))
                         | NoValue        -> raise (EvaluationError ("cannot take bool value from NULL"))
 let extractStringValue x = match x with
                         | IntValue(_)    -> raise (EvaluationError ("cannot take string value from int"))
@@ -53,6 +59,7 @@ let extractStringValue x = match x with
                         | StringValue(x) -> x
                         | Function(_)    -> raise (EvaluationError ("cannot take string value from function name"))
                         | VariableRef(_) -> raise (EvaluationError ("cannot take string value from variable reference"))
+                        | Unknown        -> raise (OptimisationError ("cannot take string value from unknown value"))
                         | NoValue        -> raise (EvaluationError ("cannot take string value from NULL"))
 let extractVariableRef x = match x with
                         | IntValue(_)    -> raise (EvaluationError ("cannot take variable reference value from int"))
@@ -61,7 +68,11 @@ let extractVariableRef x = match x with
                         | StringValue(_) -> raise (EvaluationError ("cannot take variable reference value from string"))
                         | Function(_)    -> raise (EvaluationError ("cannot take variable reference value from function name"))
                         | VariableRef(x) -> x
+                        | Unknown        -> raise (OptimisationError ("cannot take variable value from unknown value"))
                         | NoValue        -> raise (EvaluationError ("cannot take variable reference value from NULL"))
+let isKnownValue x = match x with
+                        | Unknown -> false
+                        | _       -> true
 
 
 
@@ -87,7 +98,8 @@ let rec storeUpdate from searchFor newValue = match from with
                                                              | (IntValue(_), IntValue(_))
                                                              | (FloatValue(_), FloatValue(_))
                                                              | (BoolValue(_), BoolValue(_))
-                                                             | (StringValue(_), StringValue(_)) -> ({name = searchFor; storedValue = newValue}::tl2)::tl1
+                                                             | (StringValue(_), StringValue(_)) 
+                                                             | (_, Unknown)                     -> ({name = searchFor; storedValue = newValue}::tl2)::tl1
                                                              | (x, y)                           -> raise (EvaluationError ("Tried to assign " ^ (valueToString y) ^ " to " ^ (valueToString x)))
                                                              )
                                                         else (match storeUpdate (tl2::tl1) searchFor newValue with
@@ -373,6 +385,7 @@ expression_int_eval x currStore = match x with
                                            | StringValue(sVal) -> expression_int_eval (Expression_String_To_Int(Expression_String_Literal(sVal))) eval.newStore
                                            | Function(_)       -> raise (EvaluationError ("Cannot convert function name to int"))
                                            | VariableRef(_)    -> raise (EvaluationError ("cannot convert variable ref to int"))
+                                           | Unknown           -> raise (OptimisationError ("cannot convert Unknown data to int"))
                                            | NoValue           -> raise (EvaluationError ("Cannot convert NULL to int"))
 and
 expression_float_eval x currStore = match x with
@@ -400,6 +413,7 @@ expression_float_eval x currStore = match x with
                                                  | StringValue(sVal) -> evalReturn(eval.newStore, FloatValue(float_of_string sVal))
                                                  | Function(_)       -> raise (EvaluationError("Cannot convert function name to float"))
                                                  | VariableRef(_)    -> raise (EvaluationError ("cannot convert variable ref to float"))
+                                           | Unknown           -> raise (OptimisationError ("cannot convert Unknown data to float"))
                                                  | NoValue           -> raise (EvaluationError("Cannot convert NULL to float"))
 and
 expression_bool_eval x currStore = match x with
@@ -427,6 +441,7 @@ expression_bool_eval x currStore = match x with
                                                 | StringValue(sVal) -> evalReturn(eval.newStore, BoolValue(bool_of_string sVal))
                                                 | Function(_)       -> raise (EvaluationError("Cannot convert function name to bool"))
                                                 | VariableRef(_)    -> raise (EvaluationError ("cannot convert variable ref to bool"))
+                                           | Unknown           -> raise (OptimisationError ("cannot convert Unknown data to bool"))
                                                 | NoValue           -> raise (EvaluationError("Cannot convert NULL to bool"))
 and
 expression_string_eval x currStore = match x with
@@ -454,6 +469,7 @@ expression_string_eval x currStore = match x with
                                                   | StringValue(sVal) -> evalReturn(eval.newStore, StringValue(sVal))
                                                   | Function(_)       -> raise (EvaluationError("Cannot convert function name to string"))
                                                   | VariableRef(_)    -> raise (EvaluationError ("cannot convert variable ref to string"))
+                                           | Unknown           -> raise (OptimisationError ("cannot convert Unknown data to string"))
                                                   | NoValue           -> raise (EvaluationError("Cannot convert NULL to string"))
 and
 expression_identifier_eval x currStore = match x with
@@ -469,10 +485,11 @@ expression_identifier_eval x currStore = match x with
     | Expression_Identifier_Assign(iden, exp)           -> let eval = expression_identifier_eval iden currStore in
                                                            let idenName = extractVariableRef eval.evaluation in
                                                             (match (storeLookup eval.newStore idenName) with
-                                                                   | IntValue(_)    -> let eval' = (expression_identifier_eval exp eval.newStore) in evalReturn(storeUpdate eval'.newStore idenName eval'.evaluation, eval'.evaluation)
-                                                                   | FloatValue(_)  -> let eval' = (expression_identifier_eval exp eval.newStore) in evalReturn(storeUpdate eval'.newStore idenName eval'.evaluation, eval'.evaluation)
-                                                                   | BoolValue(_)   -> let eval' = (expression_identifier_eval exp eval.newStore) in evalReturn(storeUpdate eval'.newStore idenName eval'.evaluation, eval'.evaluation)
-                                                                   | StringValue(_) -> let eval' = (expression_identifier_eval exp eval.newStore) in evalReturn(storeUpdate eval'.newStore idenName eval'.evaluation, eval'.evaluation)
+                                                                   | IntValue(_)    
+                                                                   | FloatValue(_)  
+                                                                   | BoolValue(_)   
+                                                                   | StringValue(_) 
+                                                                   | Unknown        -> let eval' = (expression_identifier_eval exp eval.newStore) in evalReturn(storeUpdate eval'.newStore idenName eval'.evaluation, eval'.evaluation)
                                                                    | Function(_)    -> raise (EvaluationError ("Cannot assign variable to function name"))
                                                                    | VariableRef(_) -> raise (EvaluationError ("cannot assign variable to variable ref"))
                                                                    | NoValue        -> raise (EvaluationError ("Cannot assign variable to NULL"))
@@ -1095,6 +1112,7 @@ identifier_operation_eval x currStore = match x with
                                                               | StringValue(_)                           -> raise (EvaluationError ("Cannot use - operator on strings."))
                                                               | Function(_)                              -> raise (EvaluationError ("Cannot use - operator on function name"))
                                                               | VariableRef(_)                           -> raise (EvaluationError ("Cannot use - operator on variable reference"))
+                                                              | Unknown                                  -> raise (OptimisationError ("cannot use - operator on Unknown"))
                                                               | NoValue                                  -> raise (EvaluationError ("Cannot use - operator here"))
                                                               )
 
