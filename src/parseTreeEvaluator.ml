@@ -442,7 +442,7 @@ expression_bool_eval x currStore = match x with
                                                 | StringValue(sVal) -> evalReturn(eval.newStore, BoolValue(bool_of_string sVal))
                                                 | Function(_)       -> raise (EvaluationError("Cannot convert function name to bool"))
                                                 | VariableRef(_)    -> raise (EvaluationError ("cannot convert variable ref to bool"))
-                                           | Unknown           -> raise (OptimisationError ("cannot convert Unknown data to bool"))
+                                                | Unknown           -> raise (OptimisationError ("cannot convert Unknown data to bool"))
                                                 | NoValue           -> raise (EvaluationError("Cannot convert NULL to bool"))
 and
 expression_string_eval x currStore = match x with
