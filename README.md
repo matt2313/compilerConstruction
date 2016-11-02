@@ -5,7 +5,7 @@ Repository for the source files and documentation of the MattC compiler, created
 
 ## Contents
 
-- An `/srs/` folder that holds the source files for the compiler (`mattc_par.mly`, `mattc_lex.mly`, `mattc.ml`), as well as scripts to compile the compiler (`build_mattc.sh`, `build_mattc.bat`)
+- An `/srs/` folder that holds the source files for the compiler (`parseTreeType.ml`, `parseTreeEvaluator.ml`, `parseTreeOptimiser.ml`, `mattc_par.mly`, `mattc_lex.mly`, `mattc.ml`), as well as scripts to compile the compiler (`build_mattc.sh`, `build_mattc.bat`)
 - A `/test/` folder containing test programs that demonstrate code written in MattC
 - A `/doc/` folder containing documentation on how to write MattC code
 
@@ -24,6 +24,7 @@ Repository for the source files and documentation of the MattC compiler, created
   - The `-terminalInput` option sets the input to come directly from the terminal. (This is the default setting)
   - The `-o` option optimises the code before evaluation and compilation
   - The `-ov` option prints the optimised parse tree, has no effect unless `-o` is also set
+  - The `-q` option clears the `-v` and `-ov` options
 
 
 ## Syntax in a Nutshell

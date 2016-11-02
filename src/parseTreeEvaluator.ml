@@ -100,6 +100,7 @@ let rec storeUpdate from searchFor newValue = match from with
                                                              | (BoolValue(_), BoolValue(_))
                                                              | (StringValue(_), StringValue(_)) 
                                                              | (_, Unknown)                     -> ({name = searchFor; storedValue = newValue}::tl2)::tl1
+                                                             | (Unknown, _)                     -> ({name = searchFor; storedValue = Unknown}::tl2)::tl1
                                                              | (x, y)                           -> raise (EvaluationError ("Tried to assign " ^ (valueToString y) ^ " to " ^ (valueToString x)))
                                                              )
                                                         else (match storeUpdate (tl2::tl1) searchFor newValue with
@@ -413,7 +414,7 @@ expression_float_eval x currStore = match x with
                                                  | StringValue(sVal) -> evalReturn(eval.newStore, FloatValue(float_of_string sVal))
                                                  | Function(_)       -> raise (EvaluationError("Cannot convert function name to float"))
                                                  | VariableRef(_)    -> raise (EvaluationError ("cannot convert variable ref to float"))
-                                           | Unknown           -> raise (OptimisationError ("cannot convert Unknown data to float"))
+                                                 | Unknown           -> raise (OptimisationError ("cannot convert Unknown data to float"))
                                                  | NoValue           -> raise (EvaluationError("Cannot convert NULL to float"))
 and
 expression_bool_eval x currStore = match x with
@@ -489,7 +490,8 @@ expression_identifier_eval x currStore = match x with
                                                                    | FloatValue(_)  
                                                                    | BoolValue(_)   
                                                                    | StringValue(_) 
-                                                                   | Unknown        -> let eval' = (expression_identifier_eval exp eval.newStore) in evalReturn(storeUpdate eval'.newStore idenName eval'.evaluation, eval'.evaluation)
+                                                                   | Unknown        -> let eval' = (expression_identifier_eval exp eval.newStore) in
+                                                                                       evalReturn(storeUpdate eval'.newStore idenName eval'.evaluation, eval'.evaluation)
                                                                    | Function(_)    -> raise (EvaluationError ("Cannot assign variable to function name"))
                                                                    | VariableRef(_) -> raise (EvaluationError ("cannot assign variable to variable ref"))
                                                                    | NoValue        -> raise (EvaluationError ("Cannot assign variable to NULL"))

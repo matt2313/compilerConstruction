@@ -54,16 +54,17 @@ let parseFile filename =
     let fileIn = open_in filename in
     let tree = Lexing.from_channel fileIn
     |> parseWithErrors filename in
-    if !verbose then print_endline ("Parse tree for raw '" ^ filename ^ "':"); print_endline (string_of_parseTree tree);
+    if !verbose then (print_endline ("Parse tree for raw '" ^ filename ^ "':"); print_endline (string_of_parseTree tree));
     close_in fileIn;
     let tree = if !optimise then optimiseParseTree tree else tree in
-    if !verboseAfterOptimisation && !optimise then print_endline ("Parse tree for optimised '" ^ filename ^ "':"); print_endline (string_of_parseTree tree);
+    if !verboseAfterOptimisation && !optimise then (print_endline ("Parse tree for optimised '" ^ filename ^ "':"); print_endline (string_of_parseTree tree));
     printFileResult tree filename;
     print_endline "";
     print_endline ""
 
 let _ =
     let specList = [("-v", Arg.Set verbose, "Prints the parse tree before optimisation");
+                    ("-q", Arg.Unit (fun () -> verbose := false; verboseAfterOptimisation := false), "Removes the '-v' and '-ov' options");
                     ("-e", Arg.Set evaluateFile, "Evaluates the program after it has been parsed");
                     ("-i", Arg.String setInputFilename, "Sets the file to use as input");
                     ("-terminalInput", Arg.Unit setTerminalInput, "Sets the terminal to be used as input");
