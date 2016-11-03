@@ -155,6 +155,7 @@ let getIntExp x = match x with
                   | Expression_Bool(_)       -> raise (EvaluationError ("implicit conversion from string expression to int expression not valid"))
                   | Expression_String(_)     -> raise (EvaluationError ("implicit conversion from bool expression to int expression not valid"))
                   | Expression_IO(_)         -> raise (EvaluationError ("cannot convert output operation to int"))
+                  | Expression_Empty         -> raise (EvaluationError ("cannot convert empty expression to int"))
 let getFloatExp x = match x with
                   | Expression_Float(x)      -> x
                   | Expression_Int(x)        -> Expression_Int_To_Float(x)
@@ -162,6 +163,7 @@ let getFloatExp x = match x with
                   | Expression_Bool(_)       -> raise (EvaluationError ("implicit conversion from string expression to float expression not valid"))
                   | Expression_String(_)     -> raise (EvaluationError ("implicit conversion from bool expression to float expression not valid"))
                   | Expression_IO(_)         -> raise (EvaluationError ("cannot convert output operation to float"))
+                  | Expression_Empty         -> raise (EvaluationError ("cannot convert empty expression to float"))
 let getBoolExp x = match x with
                   | Expression_Bool(x)       -> x
                   | Expression_Identifier(x) -> Expression_Identifier_To_Bool(x)
@@ -169,6 +171,7 @@ let getBoolExp x = match x with
                   | Expression_Float(_)      -> raise (EvaluationError ("implicit conversion from float expression to bool expression not valid"))
                   | Expression_String(_)     -> raise (EvaluationError ("implicit conversion from string expression to bool expression not valid"))
                   | Expression_IO(_)         -> raise (EvaluationError ("cannot convert output operation to bool"))
+                  | Expression_Empty         -> raise (EvaluationError ("cannot convert empty expression to bool"))
 let getStringExp x = match x with
                   | Expression_String(x)     -> x
                   | Expression_Identifier(x) -> Expression_Identifier_To_String(x)
@@ -176,6 +179,7 @@ let getStringExp x = match x with
                   | Expression_Float(_)      -> raise (EvaluationError ("implicit conversion from float expression to string expression not valid"))
                   | Expression_Bool(_)       -> raise (EvaluationError ("implicit conversion from bool expression to string expression not valid"))
                   | Expression_IO(_)         -> raise (EvaluationError ("cannot convert output operation to string"))
+                  | Expression_Empty         -> raise (EvaluationError ("cannot convert empty expression to string"))
 
 
 
@@ -287,6 +291,7 @@ expression_eval x currStore = match x with
     | Expression_String(exp) -> expression_string_eval exp currStore
     | Expression_Identifier(exp) -> expression_identifier_eval exp currStore
     | Expression_IO(ioOp) -> io_operation_eval ioOp currStore
+    | Expression_Empty -> evalReturn(currStore, NoValue)
 and
 while_statement_eval x currStore = match x with
     | While_Loop_While(exp, statList) -> let expEvaluation = expression_bool_eval exp (pushScope currStore) in
@@ -499,11 +504,11 @@ expression_identifier_eval x currStore = match x with
                                                                    | NoValue        -> raise (EvaluationError ("Cannot assign variable to NULL"))
                                                             )
     | Expression_Identifier_Function_Call(iden, params) -> (match iden with
-                                                                 | Identifier_Reference(idenName) -> (match storeLookup currStore idenName with
-                                                                                                           | Function(fun_def) -> function_call_eval fun_def params currStore
-                                                                                                           | _                 -> raise (EvaluationError ("Expected function identifier but got variable"))
-                                                                                                     )
-                                                                 | _                              -> raise (EvaluationError ("Cannot call function declaration"))
+                                                                  | Identifier_Reference(idenName) -> (match storeLookup currStore idenName with
+                                                                                                            | Function(fun_def) -> function_call_eval fun_def params currStore
+                                                                                                            | _                 -> raise (EvaluationError ("Expected function identifier but got variable"))
+                                                                                                      )
+                                                                  | _                              -> raise (EvaluationError ("Cannot call function declaration"))
                                                            )
     | Expression_Identifier_Variable_Ref(iden)          -> (match iden with
                                                                  | Identifier_Reference(idenName) -> evalReturn(currStore, VariableRef(idenName))

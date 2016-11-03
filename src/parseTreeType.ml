@@ -64,6 +64,7 @@ expression =
     | Expression_String of expression_string
     | Expression_IO of io_operation
     | Expression_Identifier of expression_identifier
+    | Expression_Empty
 and
 while_statement =
       While_Loop_While of expression_bool * statement_list
@@ -379,6 +380,7 @@ expression_toString x numTabs tabChars = match x with
     | Expression_String(exp) -> expression_string_toString exp
     | Expression_Identifier(exp) -> expression_identifier_toString exp
     | Expression_IO(ioOp) -> io_operation_toString ioOp
+    | Expression_Empty -> "empty expression"
 and
 while_statement_toString x numTabs tabChars = match x with
     | While_Loop_While(exp, statList) -> "while: (" ^ (expression_bool_toString exp) ^ ")" ^ "\n" ^ (repeatChars numTabs tabChars) ^ "do" ^ "\n" ^ (repeatChars (numTabs + 1) tabChars) ^ (statement_list_toString statList (numTabs + 1) tabChars)
