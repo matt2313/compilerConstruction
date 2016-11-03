@@ -252,7 +252,41 @@ expression_bool_optimise x currStore = match x with
     | Expression_Bool_Literal(_)         
     | Expression_Bool_Read               -> optimiseReturn currStore x
 and
-expression_string_optimise x currStore = optimiseReturn currStore x
+expression_string_optimise x currStore = match x with
+    | Expression_String_Operation(op)      -> let opt = string_operation_optimise op currStore in
+                                                  optimiseReturn opt.optStore opt.optBranch
+    | Expression_String_Declare(iden, exp) -> let opt = expression_string_optimise exp currStore in
+                                                  optimiseReturn opt.optStore (Expression_String_Declare(iden, opt.optBranch))
+    | Expression_String_Assign(iden, exp)  -> let opt = expression_string_optimise exp currStore in
+                                                  optimiseReturn opt.optStore (Expression_String_Assign(iden, opt.optBranch))
+    | Expression_Int_To_String(exp)        -> let eval = (expression_int_partial_eval exp currStore) in
+                                              if isKnownValue eval.evaluation
+                                              then ( let iVal = extractIntValue eval.evaluation in
+                                                     optimiseReturn eval.newStore (Expression_String_Literal(string_of_int iVal)) )
+                                              else optimiseReturn currStore x
+    | Expression_Float_To_String(exp)      -> let eval = (expression_float_partial_eval exp currStore) in
+                                              if isKnownValue eval.evaluation
+                                              then ( let fVal = extractFloatValue eval.evaluation in
+                                                     optimiseReturn eval.newStore (Expression_String_Literal(string_of_float fVal)) )
+                                              else optimiseReturn currStore x
+    | Expression_Bool_To_String(exp)       -> let eval = (expression_bool_partial_eval exp currStore) in
+                                              if isKnownValue eval.evaluation
+                                              then ( let bVal = extractBoolValue eval.evaluation in
+                                                     optimiseReturn eval.newStore (Expression_String_Literal(string_of_bool bVal)) )
+                                              else optimiseReturn currStore x
+    | Expression_Identifier_To_String(exp) -> let eval = expression_identifier_partial_eval exp currStore in
+                                                  (match eval.evaluation with
+                                                  | IntValue(iVal)    -> expression_string_optimise (Expression_Int_To_String(Expression_Int_Literal(iVal))) eval.newStore
+                                                  | FloatValue(fVal)  -> expression_string_optimise (Expression_Float_To_String(Expression_Float_Literal(fVal))) eval.newStore
+                                                  | BoolValue(bVal)   -> expression_string_optimise (Expression_Bool_To_String(Expression_Bool_Literal(bVal))) eval.newStore
+                                                  | StringValue(sVal) -> optimiseReturn eval.newStore (Expression_String_Literal(sVal))
+                                                  | Unknown           -> optimiseReturn currStore x
+                                                  | Function(_)       -> raise (OptimisationError ("Cannot convert function name to int"))
+                                                  | VariableRef(_)    -> raise (OptimisationError ("cannot convert variable ref to int"))
+                                                  | NoValue           -> raise (OptimisationError ("Cannot convert NULL to int"))
+                                                  )
+    | Expression_String_Literal(_)         
+    | Expression_String_Read               -> optimiseReturn currStore x
 and
 expression_identifier_optimise x currStore : expression optimiseReturn = match x with
     (*
@@ -281,7 +315,37 @@ expression_partial_eval x currStore = match x with
     | Expression_IO(ioOp)        -> io_operation_partial_eval ioOp currStore
 and
 expression_int_partial_eval x currStore = match x with
+    | Expression_Int_Literal(iVal)      -> evalReturn(currStore, IntValue(iVal))
+    | Expression_Int_Operation(op)      -> int_operation_partial_eval op currStore
+    | Expression_Int_Declare(_, _) 
+    | Expression_Int_Assign(_, _)  
     | Expression_Int_Read               -> evalReturn(currStore, Unknown)
+    | Expression_Float_To_Int(exp)      -> let eval = (expression_float_partial_eval exp currStore) in
+                                           if isKnownValue eval.evaluation
+                                           then let fVal = extractFloatValue eval.evaluation in
+                                                evalReturn(eval.newStore, IntValue(int_of_float fVal))
+                                           else evalReturn(currStore, Unknown)
+    | Expression_Bool_To_Int(exp)       -> let eval = (expression_bool_partial_eval exp currStore) in
+                                           if isKnownValue eval.evaluation
+                                           then let bVal = extractBoolValue eval.evaluation in
+                                                evalReturn(eval.newStore, IntValue(if bVal then 1 else 0))
+                                           else evalReturn(currStore, Unknown)
+    | Expression_String_To_Int(exp)     -> let eval = (expression_string_partial_eval exp currStore) in
+                                           if isKnownValue eval.evaluation
+                                           then let sVal = extractStringValue eval.evaluation in
+                                                evalReturn(eval.newStore, IntValue(int_of_string sVal))
+                                           else evalReturn(currStore, Unknown)
+    | Expression_Identifier_To_Int(exp) -> let eval = expression_identifier_partial_eval exp currStore in
+                                           (match eval.evaluation with
+                                           | IntValue(iVal)    -> evalReturn(eval.newStore, IntValue(iVal))
+                                           | FloatValue(fVal)  -> expression_int_partial_eval (Expression_Float_To_Int(Expression_Float_Literal(fVal))) eval.newStore
+                                           | BoolValue(bVal)   -> expression_int_partial_eval (Expression_Bool_To_Int(Expression_Bool_Literal(bVal))) eval.newStore
+                                           | StringValue(sVal) -> expression_int_partial_eval (Expression_String_To_Int(Expression_String_Literal(sVal))) eval.newStore
+                                           | Unknown           -> evalReturn(currStore, Unknown)
+                                           | Function(_)       -> raise (EvaluationError ("Cannot convert function name to int"))
+                                           | VariableRef(_)    -> raise (EvaluationError ("cannot convert variable ref to int"))
+                                           | NoValue           -> raise (EvaluationError ("Cannot convert NULL to int"))
+                                           )
     (*
     | Expression_Int_Declare(iden, exp) -> let eval = (expression_int_partial_eval exp currStore) in
                                            identifier_declare iden eval.newStore eval.evaluation
@@ -289,70 +353,145 @@ expression_int_partial_eval x currStore = match x with
                                            let eval' = (expression_int_partial_eval exp currStore) in
                                            identifier_update (extractVariableRef eval.evaluation) eval'.newStore eval'.evaluation
     *)
-    | Expression_Identifier_To_Int(exp) -> let eval = expression_identifier_eval exp currStore in
-                                           (match eval.evaluation with
-                                           | IntValue(iVal)    -> evalReturn(eval.newStore, IntValue(iVal))
-                                           | FloatValue(fVal)  -> expression_int_eval (Expression_Float_To_Int(Expression_Float_Literal(fVal))) eval.newStore
-                                           | BoolValue(bVal)   -> expression_int_eval (Expression_Bool_To_Int(Expression_Bool_Literal(bVal))) eval.newStore
-                                           | StringValue(sVal) -> expression_int_eval (Expression_String_To_Int(Expression_String_Literal(sVal))) eval.newStore
-                                           | Unknown           -> evalReturn(eval.newStore, Unknown)
-                                           | Function(_)       -> raise (OptimisationError ("Cannot convert function name to int"))
-                                           | VariableRef(_)    -> raise (OptimisationError ("cannot convert variable ref to int"))
-                                           | NoValue           -> raise (OptimisationError ("Cannot convert NULL to int"))
-                                           )
-    | Expression_Int_Declare(_, _)      
-    | Expression_Int_Assign(_, _)       
-    | Expression_Int_Literal(_)         
-    | Expression_Int_Operation(_)       
-    | Expression_Float_To_Int(_)        
-    | Expression_Bool_To_Int(_)         
-    | Expression_String_To_Int(_)       -> expression_int_eval x currStore
 and
 expression_float_partial_eval x currStore = match x with
+    | Expression_Float_Literal(fVal)      -> evalReturn(currStore, FloatValue(fVal))
+    | Expression_Float_Operation(op)      -> float_operation_partial_eval op currStore
+    | Expression_Float_Declare(_, _) 
+    | Expression_Float_Assign(_, _)  
     | Expression_Float_Read               -> evalReturn(currStore, Unknown)
-    | Expression_Identifier_To_Float(exp) -> let eval = (expression_identifier_eval exp currStore) in
-                                                 (match eval.evaluation with
-                                                 | IntValue(iVal)    -> expression_float_eval (Expression_Int_To_Float(Expression_Int_Literal(iVal))) eval.newStore
-                                                 | FloatValue(fVal)  -> evalReturn(eval.newStore, FloatValue(fVal))
-                                                 | BoolValue(bVal)   -> expression_float_eval (Expression_Bool_To_Float(Expression_Bool_Literal(bVal))) eval.newStore
-                                                 | StringValue(sVal) -> expression_float_eval (Expression_String_To_Float(Expression_String_Literal(sVal))) eval.newStore
-                                                 | Unknown           -> evalReturn(eval.newStore, Unknown)
-                                                 | Function(_)       -> raise (EvaluationError("Cannot convert function name to float"))
-                                                 | VariableRef(_)    -> raise (EvaluationError ("cannot convert variable ref to float"))
-                                                 | NoValue           -> raise (EvaluationError("Cannot convert NULL to float"))
-                                                 )
-    | Expression_Float_Literal(_)         
-    | Expression_Float_Operation(_)       
-    | Expression_Float_Declare(_, _)      
-    | Expression_Float_Assign(_, _)       
-    | Expression_Int_To_Float(_)          
-    | Expression_Bool_To_Float(_)         
-    | Expression_String_To_Float(_)       -> expression_float_eval x currStore
+    | Expression_Int_To_Float(exp)        -> let eval = (expression_int_partial_eval exp currStore) in
+                                             if isKnownValue eval.evaluation
+                                             then let iVal = extractIntValue eval.evaluation in
+                                                  evalReturn(eval.newStore, FloatValue(float_of_int iVal))
+                                             else evalReturn(currStore, Unknown)
+    | Expression_Bool_To_Float(exp)       -> let eval = (expression_bool_partial_eval exp currStore) in
+                                             if isKnownValue eval.evaluation
+                                             then let bVal = extractBoolValue eval.evaluation in
+                                                  evalReturn(eval.newStore, FloatValue(if bVal then 1. else 0.))
+                                             else evalReturn(currStore, Unknown)
+    | Expression_String_To_Float(exp)     -> let eval = (expression_string_partial_eval exp currStore) in
+                                             if isKnownValue eval.evaluation
+                                             then let sVal = extractStringValue eval.evaluation in
+                                                      evalReturn(eval.newStore, FloatValue(float_of_string sVal))
+                                             else evalReturn(currStore, Unknown)
+    | Expression_Identifier_To_Float(exp) -> let eval = expression_identifier_partial_eval exp currStore in
+                                                   (match eval.evaluation with
+                                                   | IntValue(iVal)    -> expression_float_partial_eval (Expression_Int_To_Float(Expression_Int_Literal(iVal))) eval.newStore
+                                                   | FloatValue(fVal)  -> evalReturn(eval.newStore, FloatValue(fVal))
+                                                   | BoolValue(bVal)   -> expression_float_partial_eval (Expression_Bool_To_Float(Expression_Bool_Literal(bVal))) eval.newStore
+                                                   | StringValue(sVal) -> expression_float_partial_eval (Expression_String_To_Float(Expression_String_Literal(sVal))) eval.newStore
+                                                   | Unknown           -> evalReturn(currStore, Unknown)
+                                                   | Function(_)       -> raise (EvaluationError ("Cannot convert function name to int"))
+                                                   | VariableRef(_)    -> raise (EvaluationError ("cannot convert variable ref to int"))
+                                                   | NoValue           -> raise (EvaluationError ("Cannot convert NULL to int"))
+                                                   )
 and
 expression_bool_partial_eval x currStore = match x with
+    | Expression_Bool_Literal(bVal)      -> evalReturn(currStore, BoolValue(bVal))
+    | Expression_Bool_Operation(op)      -> bool_operation_partial_eval op currStore
+    | Expression_Bool_Declare(_, _) 
+    | Expression_Bool_Assign(_, _)  
     | Expression_Bool_Read               -> evalReturn(currStore, Unknown)
-    | Expression_Identifier_To_Bool(exp) -> let eval = (expression_identifier_eval exp currStore) in
-                                                 (match eval.evaluation with
-                                                 | IntValue(iVal)    -> expression_bool_eval (Expression_Int_To_Bool(Expression_Int_Literal(iVal))) eval.newStore
-                                                 | FloatValue(fVal)  -> expression_bool_eval (Expression_Float_To_Bool(Expression_Float_Literal(fVal))) eval.newStore
-                                                 | BoolValue(bVal)   -> evalReturn(eval.newStore, BoolValue(bVal))
-                                                 | StringValue(sVal) -> expression_bool_eval (Expression_String_To_Bool(Expression_String_Literal(sVal))) eval.newStore
-                                                 | Unknown           -> evalReturn(eval.newStore, Unknown)
-                                                 | Function(_)       -> raise (EvaluationError("Cannot convert function name to bool"))
-                                                 | VariableRef(_)    -> raise (EvaluationError ("cannot convert variable ref to bool"))
-                                                 | NoValue           -> raise (EvaluationError("Cannot convert NULL to bool"))
-                                                 )
-    | Expression_Bool_Literal(_)         
-    | Expression_Bool_Operation(_)       
-    | Expression_Bool_Declare(_, _)      
-    | Expression_Bool_Assign(_, _)       
-    | Expression_Int_To_Bool(_)          
-    | Expression_Float_To_Bool(_)         
-    | Expression_String_To_Bool(_)       -> expression_bool_eval x currStore
+    | Expression_Int_To_Bool(exp)        -> let eval = (expression_int_partial_eval exp currStore) in
+                                            if isKnownValue eval.evaluation
+                                            then let iVal = extractIntValue eval.evaluation in
+                                                     evalReturn(eval.newStore, BoolValue(iVal = 1))
+                                            else evalReturn(currStore, Unknown)
+    | Expression_Float_To_Bool(exp)      -> let eval = (expression_float_partial_eval exp currStore) in
+                                            if isKnownValue eval.evaluation
+                                            then let fVal = extractFloatValue eval.evaluation in
+                                                     evalReturn(eval.newStore, BoolValue(fVal = 1.))
+                                            else evalReturn(currStore, Unknown)
+    | Expression_String_To_Bool(exp)     -> let eval = (expression_string_partial_eval exp currStore) in
+                                            if isKnownValue eval.evaluation
+                                            then let sVal = extractStringValue eval.evaluation in
+                                                     evalReturn(eval.newStore, BoolValue(bool_of_string sVal))
+                                            else evalReturn(currStore, Unknown)
+    | Expression_Identifier_To_Bool(exp) -> let eval = expression_identifier_partial_eval exp currStore in
+                                           (match eval.evaluation with
+                                           | IntValue(iVal)    -> expression_bool_partial_eval (Expression_Int_To_Bool(Expression_Int_Literal(iVal))) eval.newStore
+                                           | FloatValue(fVal)  -> expression_bool_partial_eval (Expression_Float_To_Bool(Expression_Float_Literal(fVal))) eval.newStore
+                                           | BoolValue(bVal)   -> evalReturn(eval.newStore, BoolValue(bVal))
+                                           | StringValue(sVal) -> expression_bool_partial_eval (Expression_String_To_Bool(Expression_String_Literal(sVal))) eval.newStore
+                                           | Unknown           -> evalReturn(currStore, Unknown)
+                                           | Function(_)       -> raise (EvaluationError ("Cannot convert function name to bool"))
+                                           | VariableRef(_)    -> raise (EvaluationError ("cannot convert variable ref to bool"))
+                                           | NoValue           -> raise (EvaluationError ("Cannot convert NULL to bool"))
+                                           )
 and
-expression_string_partial_eval x currStore = evalReturn(currStore, Unknown)
+expression_string_partial_eval x currStore = match x with
+    | Expression_String_Literal(sVal)      -> evalReturn(currStore, StringValue(sVal))
+    | Expression_String_Operation(op)      -> string_operation_partial_eval op currStore
+    | Expression_String_Declare(_, _) 
+    | Expression_String_Assign(_, _)  
+    | Expression_String_Read               -> evalReturn(currStore, Unknown)
+    | Expression_Int_To_String(exp)        -> let eval = (expression_int_partial_eval exp currStore) in
+                                              if isKnownValue eval.evaluation
+                                              then let iVal = extractIntValue eval.evaluation in
+                                                       evalReturn(eval.newStore, StringValue(string_of_int iVal))
+                                              else evalReturn(currStore, Unknown)
+    | Expression_Float_To_String(exp)      -> let eval = (expression_float_partial_eval exp currStore) in
+                                              if isKnownValue eval.evaluation
+                                              then let fVal = extractFloatValue eval.evaluation in
+                                                       evalReturn(eval.newStore, StringValue(string_of_float fVal))
+                                              else evalReturn(currStore, Unknown)
+    | Expression_Bool_To_String(exp)       -> let eval = (expression_bool_partial_eval exp currStore) in
+                                              if isKnownValue eval.evaluation
+                                              then let bVal = extractBoolValue eval.evaluation in
+                                                       evalReturn(eval.newStore, StringValue(string_of_bool bVal))
+                                              else evalReturn(currStore, Unknown)
+    | Expression_Identifier_To_String(exp) -> let eval = expression_identifier_partial_eval exp currStore in
+                                              (match eval.evaluation with
+                                              | IntValue(iVal)    -> expression_string_partial_eval (Expression_Int_To_String(Expression_Int_Literal(iVal))) eval.newStore
+                                              | FloatValue(fVal)  -> expression_string_partial_eval (Expression_Float_To_String(Expression_Float_Literal(fVal))) eval.newStore
+                                              | BoolValue(bVal)   -> expression_string_partial_eval (Expression_Bool_To_String(Expression_Bool_Literal(bVal))) eval.newStore
+                                              | StringValue(sVal) -> evalReturn(eval.newStore, StringValue(sVal))
+                                              | Unknown           -> evalReturn(currStore, Unknown)
+                                              | Function(_)       -> raise (EvaluationError ("Cannot convert function name to string"))
+                                              | VariableRef(_)    -> raise (EvaluationError ("cannot convert variable ref to string"))
+                                              | NoValue           -> raise (EvaluationError ("Cannot convert NULL to string"))
+                                              )
 and
-expression_identifier_partial_eval (x : expression_identifier) currStore = match x with
+expression_identifier_partial_eval x currStore = match x with
+    | _ -> evalReturn(currStore, Unknown)
+    (*
+    | Expression_Identifier_Dereference(iden)           ->(match iden with
+                                                                 | Identifier_Reference(idenName) -> evalReturn(currStore, storeLookup currStore idenName)
+                                                                 | _                              -> raise (EvaluationError ("Cannot dereference variable declaration"))
+                                                           )
+    | Expression_Identifier_Operation(op)               -> identifier_operation_eval op currStore
+    | Expression_Identifier_Declare_Int(iden, exp)      -> let eval = (expression_identifier_eval exp currStore) in let currStore' = eval.newStore in identifier_declare iden currStore' eval.evaluation
+    | Expression_Identifier_Declare_Float(iden, exp)    -> let eval = (expression_identifier_eval exp currStore) in let currStore' = eval.newStore in identifier_declare iden currStore' eval.evaluation
+    | Expression_Identifier_Declare_Bool(iden, exp)     -> let eval = (expression_identifier_eval exp currStore) in let currStore' = eval.newStore in identifier_declare iden currStore' eval.evaluation
+    | Expression_Identifier_Declare_String(iden, exp)   -> let eval = (expression_identifier_eval exp currStore) in let currStore' = eval.newStore in identifier_declare iden currStore' eval.evaluation
+    | Expression_Identifier_Assign(iden, exp)           -> let eval = expression_identifier_eval iden currStore in
+                                                           let idenName = extractVariableRef eval.evaluation in
+                                                            (match (storeLookup eval.newStore idenName) with
+                                                                   | IntValue(_)    
+                                                                   | FloatValue(_)  
+                                                                   | BoolValue(_)   
+                                                                   | StringValue(_) 
+                                                                   | Unknown        -> let eval' = (expression_identifier_eval exp eval.newStore) in
+                                                                                       evalReturn(storeUpdate eval'.newStore idenName eval'.evaluation, eval'.evaluation)
+                                                                   | Function(_)    -> raise (EvaluationError ("Cannot assign variable to function name"))
+                                                                   | VariableRef(_) -> raise (EvaluationError ("cannot assign variable to variable ref"))
+                                                                   | NoValue        -> raise (EvaluationError ("Cannot assign variable to NULL"))
+                                                            )
+    | Expression_Identifier_Function_Call(iden, params) -> (match iden with
+                                                                 | Identifier_Reference(idenName) -> (match storeLookup currStore idenName with
+                                                                                                           | Function(fun_def) -> function_call_eval fun_def params currStore
+                                                                                                           | _                 -> raise (EvaluationError ("Expected function identifier but got variable"))
+                                                                                                     )
+                                                                 | _                              -> raise (EvaluationError ("Cannot call function declaration"))
+                                                           )
+    | Expression_Identifier_Variable_Ref(iden)          -> (match iden with
+                                                                 | Identifier_Reference(idenName) -> evalReturn(currStore, VariableRef(idenName))
+                                                                 | _                              -> raise (EvaluationError ("Cannot reference variable from declaration"))
+                                                           )
+    | Statement_While(whileStat) -> while_statement_eval whileStat currStore
+    | Statement_If(ifStat) -> if_statement_eval ifStat currStore
+    *)
     (*
     | Expression_Identifier_Dereference(iden)      -> (match iden with
                                                         | Identifier_Reference(idenName) -> evalReturn(currStore, storeLookup currStore idenName)
@@ -360,7 +499,26 @@ expression_identifier_partial_eval (x : expression_identifier) currStore = match
                                                       ) 
     | Expression_Identifier_Declare_Int(iden, exp) -> let eval = (expression_identifier_partial_eval exp currStore) in let currStore' = eval.newStore in identifier_declare iden currStore' eval.evaluation
     *)
-    | _                                            -> evalReturn(currStore, Unknown)
+and
+int_operation_partial_eval x currStore = let opt = int_operation_optimise x currStore in
+                                         match opt.optBranch with
+                                               | Expression_Int_Literal(iVal) -> evalReturn(opt.optStore, IntValue(iVal))
+                                               | _                            -> evalReturn(opt.optStore, Unknown)
+and
+float_operation_partial_eval x currStore = let opt = float_operation_optimise x currStore in
+                                           match opt.optBranch with
+                                                 | Expression_Float_Literal(fVal) -> evalReturn(opt.optStore, FloatValue(fVal))
+                                                 | _                              -> evalReturn(opt.optStore, Unknown)
+and
+bool_operation_partial_eval x currStore = let opt = bool_operation_optimise x currStore in
+                                          match opt.optBranch with
+                                                | Expression_Bool_Literal(bVal) -> evalReturn(opt.optStore, BoolValue(bVal))
+                                                | _                             -> evalReturn(opt.optStore, Unknown)
+and
+string_operation_partial_eval x currStore = let opt = string_operation_optimise x currStore in
+                                            match opt.optBranch with
+                                                  | Expression_String_Literal(sVal) -> evalReturn(opt.optStore, StringValue(sVal))
+                                                  | _                               -> evalReturn(opt.optStore, Unknown)
 and
 io_operation_partial_eval x currStore = evalReturn(currStore, NoValue)
 and
@@ -649,9 +807,119 @@ bool_operation_optimise x currStore : expression_bool optimiseReturn = match x w
                                  then optimiseReturn eval.newStore (Expression_Bool_Literal(not(extractBoolValue eval.evaluation)))
                                  else optimiseReturn eval.newStore (Expression_Bool_Operation(Operation_Not_Bool(exp)))
 and
-string_operation_optimise x currStore = optimiseReturn currStore x
+string_operation_optimise x currStore = match x with
+    | Operation_String_Concat_String(lhs, rhs)      -> let lhsEval = expression_string_partial_eval lhs currStore in
+                                                       let rhsEval = expression_string_partial_eval rhs lhsEval.newStore in
+                                                       if (isKnownValue lhsEval.evaluation) && (isKnownValue rhsEval.evaluation)
+                                                       then optimiseReturn rhsEval.newStore (Expression_String_Literal((extractStringValue lhsEval.evaluation) ^ (extractStringValue rhsEval.evaluation)))
+                                                       else let lhsOpt = expression_string_optimise lhs currStore in
+                                                            let rhsOpt = expression_string_optimise rhs lhsOpt.optStore in
+                                                            optimiseReturn rhsOpt.optStore (Expression_String_Operation(Operation_String_Concat_String(lhsOpt.optBranch, rhsOpt.optBranch)))
+    | Operation_Identifier_Concat_String(lhs, rhs)  -> let lhsEval = expression_identifier_partial_eval lhs currStore in
+                                                       let rhsEval = expression_string_partial_eval rhs lhsEval.newStore in
+                                                       if (isKnownValue lhsEval.evaluation) && (isKnownValue rhsEval.evaluation)
+                                                       then optimiseReturn rhsEval.newStore (Expression_String_Literal((extractStringValue lhsEval.evaluation) ^ (extractStringValue rhsEval.evaluation)))
+                                                       else let lhsOpt = expression_identifier_optimise lhs currStore in
+                                                            let rhsOpt = expression_string_optimise rhs lhsOpt.optStore in
+                                                            (match lhsOpt.optBranch with
+                                                                  | Expression_Identifier(newBranch) -> optimiseReturn rhsOpt.optStore (Expression_String_Operation(Operation_Identifier_Concat_String(newBranch, rhsOpt.optBranch)))
+                                                                  | _                                -> raise (OptimisationError ("Left side of Float_Identifier statement is not an identifier expression"))
+                                                            )
+    | Operation_String_Concat_Identifier(lhs, rhs)  -> let lhsEval = expression_string_partial_eval lhs currStore in
+                                                       let rhsEval = expression_identifier_partial_eval rhs lhsEval.newStore in
+                                                       if (isKnownValue lhsEval.evaluation) && (isKnownValue rhsEval.evaluation)
+                                                       then optimiseReturn rhsEval.newStore (Expression_String_Literal((extractStringValue lhsEval.evaluation) ^ (extractStringValue rhsEval.evaluation)))
+                                                       else let lhsOpt = expression_string_optimise lhs currStore in
+                                                            let rhsOpt = expression_identifier_optimise rhs lhsOpt.optStore in
+                                                            (match rhsOpt.optBranch with
+                                                                  | Expression_Identifier(newBranch) -> optimiseReturn rhsOpt.optStore (Expression_String_Operation(Operation_String_Concat_Identifier(lhsOpt.optBranch, newBranch)))
+                                                                  | _                                -> raise (OptimisationError ("Right side of Float_Identifier statement is not an identifier expression"))
+                                                            )
+
+    | Operation_Substring_String_Int_Int(strExp, startExp, lenExp)               -> let strEval = expression_string_partial_eval strExp currStore in
+                                                                                    let startEval = expression_int_partial_eval startExp strEval.newStore in
+                                                                                    let lenEval = expression_int_partial_eval lenExp startEval.newStore in
+                                                                                    if (isKnownValue strEval.evaluation) && (isKnownValue startEval.evaluation) && (isKnownValue lenEval.evaluation)
+                                                                                    then optimiseReturn lenEval.newStore (Expression_String_Literal(String.sub (extractStringValue strEval.evaluation) (extractIntValue startEval.evaluation) (extractIntValue lenEval.evaluation)))
+                                                                                    else let strOpt = expression_string_optimise strExp currStore in
+                                                                                         let startOpt = expression_int_optimise startExp strOpt.optStore in
+                                                                                         let lenOpt = expression_int_optimise lenExp startOpt.optStore in
+                                                                                         optimiseReturn lenOpt.optStore (Expression_String_Operation(Operation_Substring_String_Int_Int(strOpt.optBranch, startOpt.optBranch, lenOpt.optBranch)))
+    | Operation_Substring_String_Int_Identifier(strExp, startExp, lenExp)        -> let strEval = expression_string_partial_eval strExp currStore in
+                                                                                    let startEval = expression_int_partial_eval startExp strEval.newStore in
+                                                                                    let lenEval = expression_identifier_partial_eval lenExp startEval.newStore in
+                                                                                    if (isKnownValue strEval.evaluation) && (isKnownValue startEval.evaluation) && (isKnownValue lenEval.evaluation)
+                                                                                    then optimiseReturn lenEval.newStore (Expression_String_Literal(String.sub (extractStringValue strEval.evaluation) (extractIntValue startEval.evaluation) (extractIntValue lenEval.evaluation)))
+                                                                                    else let strOpt = expression_string_optimise strExp currStore in
+                                                                                         let startOpt = expression_int_optimise startExp strOpt.optStore in
+                                                                                         let lenOpt = expression_identifier_optimise lenExp startOpt.optStore in
+                                                                                         (match lenOpt.optBranch with
+                                                                                               | Expression_Identifier(newBranch) -> optimiseReturn lenOpt.optStore (Expression_String_Operation(Operation_Substring_String_Int_Identifier(strOpt.optBranch, startOpt.optBranch, newBranch)))
+                                                                                               | _                                -> raise (OptimisationError ("Error optimising substring function"))
+                                                                                         )
+    | Operation_Substring_String_Identifier_Int(strExp, startExp, lenExp)        -> let strEval = expression_string_partial_eval strExp currStore in
+                                                                                    let startEval = expression_identifier_partial_eval startExp strEval.newStore in
+                                                                                    let lenEval = expression_int_partial_eval lenExp startEval.newStore in
+                                                                                    if (isKnownValue strEval.evaluation) && (isKnownValue startEval.evaluation) && (isKnownValue lenEval.evaluation)
+                                                                                    then optimiseReturn lenEval.newStore (Expression_String_Literal(String.sub (extractStringValue strEval.evaluation) (extractIntValue startEval.evaluation) (extractIntValue lenEval.evaluation)))
+                                                                                    else let strOpt = expression_string_optimise strExp currStore in
+                                                                                         let startOpt = expression_identifier_optimise startExp strOpt.optStore in
+                                                                                         let lenOpt = expression_int_optimise lenExp startOpt.optStore in
+                                                                                         (match startOpt.optBranch with
+                                                                                               | Expression_Identifier(newBranch) -> optimiseReturn lenOpt.optStore (Expression_String_Operation(Operation_Substring_String_Identifier_Int(strOpt.optBranch, newBranch, lenOpt.optBranch)))
+                                                                                               | _                                -> raise (OptimisationError ("Error optimising substring function"))
+                                                                                         )
+    | Operation_Substring_String_Identifier_Identifier(strExp, startExp, lenExp) -> let strEval = expression_string_partial_eval strExp currStore in
+                                                                                    let startEval = expression_identifier_partial_eval startExp strEval.newStore in
+                                                                                    let lenEval = expression_identifier_partial_eval lenExp startEval.newStore in
+                                                                                    if (isKnownValue strEval.evaluation) && (isKnownValue startEval.evaluation) && (isKnownValue lenEval.evaluation)
+                                                                                    then optimiseReturn lenEval.newStore (Expression_String_Literal(String.sub (extractStringValue strEval.evaluation) (extractIntValue startEval.evaluation) (extractIntValue lenEval.evaluation)))
+                                                                                    else let strOpt = expression_string_optimise strExp currStore in
+                                                                                         let startOpt = expression_identifier_optimise startExp strOpt.optStore in
+                                                                                         let lenOpt = expression_identifier_optimise lenExp startOpt.optStore in
+                                                                                         (match (startOpt.optBranch, lenOpt.optBranch) with
+                                                                                               | (Expression_Identifier(newBranchL), Expression_Identifier(newBranchR)) -> optimiseReturn lenOpt.optStore (Expression_String_Operation(Operation_Substring_String_Identifier_Identifier(strOpt.optBranch, newBranchL, newBranchR)))
+                                                                                               | _                                                                      -> raise (OptimisationError ("Error optimising substring function"))
+                                                                                         )
+    | Operation_Substring_Identifier_Int_Int(strExp, startExp, lenExp)           -> let strEval = expression_identifier_partial_eval strExp currStore in
+                                                                                    let startEval = expression_int_partial_eval startExp strEval.newStore in
+                                                                                    let lenEval = expression_int_partial_eval lenExp startEval.newStore in
+                                                                                    if (isKnownValue strEval.evaluation) && (isKnownValue startEval.evaluation) && (isKnownValue lenEval.evaluation)
+                                                                                    then optimiseReturn lenEval.newStore (Expression_String_Literal(String.sub (extractStringValue strEval.evaluation) (extractIntValue startEval.evaluation) (extractIntValue lenEval.evaluation)))
+                                                                                    else let strOpt = expression_identifier_optimise strExp currStore in
+                                                                                         let startOpt = expression_int_optimise startExp strOpt.optStore in
+                                                                                         let lenOpt = expression_int_optimise lenExp startOpt.optStore in
+                                                                                         (match strOpt.optBranch with
+                                                                                               | Expression_Identifier(newBranch) -> optimiseReturn lenOpt.optStore (Expression_String_Operation(Operation_Substring_Identifier_Int_Int(newBranch, startOpt.optBranch, lenOpt.optBranch)))
+                                                                                               | _                                -> raise (OptimisationError ("Error optimising substring function"))
+                                                                                         )
+    | Operation_Substring_Identifier_Int_Identifier(strExp, startExp, lenExp)    -> let strEval = expression_identifier_partial_eval strExp currStore in
+                                                                                    let startEval = expression_int_partial_eval startExp strEval.newStore in
+                                                                                    let lenEval = expression_identifier_partial_eval lenExp startEval.newStore in
+                                                                                    if (isKnownValue strEval.evaluation) && (isKnownValue startEval.evaluation) && (isKnownValue lenEval.evaluation)
+                                                                                    then optimiseReturn lenEval.newStore (Expression_String_Literal(String.sub (extractStringValue strEval.evaluation) (extractIntValue startEval.evaluation) (extractIntValue lenEval.evaluation)))
+                                                                                    else let strOpt = expression_identifier_optimise strExp currStore in
+                                                                                         let startOpt = expression_int_optimise startExp strOpt.optStore in
+                                                                                         let lenOpt = expression_identifier_optimise lenExp startOpt.optStore in
+                                                                                         (match (strOpt.optBranch, lenOpt.optBranch) with
+                                                                                               | (Expression_Identifier(newBranchL), Expression_Identifier(newBranchR)) -> optimiseReturn lenOpt.optStore (Expression_String_Operation(Operation_Substring_Identifier_Int_Identifier(newBranchL, startOpt.optBranch, newBranchR)))
+                                                                                               | _                                                                      -> raise (OptimisationError ("Error optimising substring function"))
+                                                                                         )
+    | Operation_Substring_Identifier_Identifier_Int(strExp, startExp, lenExp)    -> let strEval = expression_identifier_partial_eval strExp currStore in
+                                                                                    let startEval = expression_identifier_partial_eval startExp strEval.newStore in
+                                                                                    let lenEval = expression_int_partial_eval lenExp startEval.newStore in
+                                                                                    if (isKnownValue strEval.evaluation) && (isKnownValue startEval.evaluation) && (isKnownValue lenEval.evaluation)
+                                                                                    then optimiseReturn lenEval.newStore (Expression_String_Literal(String.sub (extractStringValue strEval.evaluation) (extractIntValue startEval.evaluation) (extractIntValue lenEval.evaluation)))
+                                                                                    else let strOpt = expression_identifier_optimise strExp currStore in
+                                                                                         let startOpt = expression_identifier_optimise startExp strOpt.optStore in
+                                                                                         let lenOpt = expression_int_optimise lenExp startOpt.optStore in
+                                                                                         (match (strOpt.optBranch, startOpt.optBranch) with
+                                                                                                | (Expression_Identifier(newBranchL), Expression_Identifier(newBranchR)) -> optimiseReturn lenOpt.optStore (Expression_String_Operation(Operation_Substring_Identifier_Identifier_Int(newBranchL, newBranchR, lenOpt.optBranch)))
+                                                                                                | _                                                                      -> raise (OptimisationError ("Error optimising substring function"))
+                                                                                         )
 and
-identifier_operation_optimise x currStore = optimiseReturn currStore x
+identifier_operation_optimise x currStore : expression optimiseReturn = match x with
+    | _ -> optimiseReturn currStore (Expression_Identifier(x))
 and
 return_statement_optimise x currStore = match x with
     | Return_Int(exp)           -> let opt = expression_int_optimise exp currStore in optimiseReturn opt.optStore (Return_Int(opt.optBranch))
