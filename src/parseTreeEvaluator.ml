@@ -194,6 +194,8 @@ let read_bool x =
     else
         raise (EvaluationError ("Cannot convert string '" ^ input ^ "' to bool"))
 
+let bool_of_string s = (s = "true")
+
 
 
 let readInt_function = ref (read_int)
