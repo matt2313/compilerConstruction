@@ -72,6 +72,7 @@ rule read = parse
     | ")"                   { CLBRACKET }
     | "{"                   { OPBRACE }
     | "}"                   { CLBRACE }
+    | "!"                   { DEREF }
     | eof                   { EOF }
     | identifier as name    { IDENTIFIER (name) }
     | _                     { raise(SyntaxError("Unexpected character '" ^ Lexing.lexeme lexbuf ^ "'")) }

@@ -4,5 +4,5 @@ string main()
     string b := "world";
     string c := "!";
     
-    return a ^ b ^ c; // 'hello world!'
+    return !a ^ !b ^ !c; // 'hello world!'
 }

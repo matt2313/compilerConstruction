@@ -6,13 +6,13 @@ int main()
     {
         5 + 10;
         20;
-    }
+    };
 
     while
     ( false )
     {
         // You can leave this blank without error
-    }
+    };
 
     // This syntax is possible but not reccomended
     while
@@ -21,7 +21,7 @@ int main()
 
     {
         100 - 10;
-    }
+    };
 
     do
     {
@@ -29,7 +29,7 @@ int main()
         while(false)
         {
             
-        }
+        };
     }
     while(true);
 
@@ -47,7 +47,7 @@ int main()
     while(true)
     {
         10 * 8;
-    }
+    };
 
     do
     {
@@ -59,12 +59,12 @@ int main()
     {
         10 + 46;
         12 - 6;
-    }
+    };
 
     if (6 > 7)
     {
         200;
-    }
+    };
 
     // Again, this is not recommended
     if
@@ -75,7 +75,7 @@ int main()
         {
             12 + 5;
             17;
-        }
+        };
     }
     else
     {
@@ -84,14 +84,14 @@ int main()
             true AND false;
         }
         while 12 < 5;
-    }
+    };
 
     do
     {
         if(false)
         {
             100;
-        }
+        };
     }
     while true;
     
@@ -110,7 +110,7 @@ int main()
     else
     {
         4;
-    }
+    };
     
     if(true)
     {
@@ -119,7 +119,7 @@ int main()
     else if(false)
     {
         2;
-    }
+    };
         
     return 0;
 }

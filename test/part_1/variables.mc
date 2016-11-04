@@ -7,15 +7,15 @@ int main()
     bool c := false;
     string d := "Hello World!";
 
-    a;
-    b;
-    c;
-    d;
+    !a;
+    !b;
+    !c;
+    !d;
 
-    int a2 := (a * a);
-    float b2 := b + b;
-    bool c2 := NOT c;
-    string d2 := d ^ "\n" ^ d;
+    int a2 := (!a * !a);
+    float b2 := !b + !b;
+    bool c2 := NOT !c;
+    string d2 := !d ^ "\n" ^ !d;
 
     int A := int B := int C := int D := 60;
 

@@ -1,6 +1,6 @@
 int add(int a, int b)
 {
-    return a + b;
+    return !a + !b;
 }
 
 string main()
@@ -8,8 +8,8 @@ string main()
     print_string("Enter 2 strings:");
     string a := read_string();
     string b := read_string();
-    string c := a ^ b;
-    print_string(c);
+    string c := !a ^ !b;
+    print_string(!c);
     
-    return c;
+    return !c;
 }

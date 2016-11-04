@@ -16,7 +16,7 @@ float f(bool arg1, string arg2)
     else
     {
         return 0f;
-    }
+    };
 }
 
 bool returnsTrue(){return true;}

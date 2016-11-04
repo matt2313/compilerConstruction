@@ -6,23 +6,23 @@ int main()
     int j := -1;
 
     new int i := 20 in
-    while(i > 0)
+    while(!i > 0)
     {
-        print_int(i);
+        print_int(!i);
         print_string(" ");
-        i := i - 1;
-    }
+        i := !i - 1;
+    };
     
     print_string("| ");
     
     new int i := 15 in
     new int j := 0 in
-    while(j < i)
+    while(!j < !i)
     {
-        print_int(j);
+        print_int(!j);
         print_string(" ");
-        j := j + 1;
-    }
+        j := !j + 1;
+    };
     
     return 0;
 }
