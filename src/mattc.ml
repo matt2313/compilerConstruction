@@ -1,6 +1,10 @@
 open ParseTreeType
 open ParseTreeEvaluator
 open ParseTreeOptimiser
+
+open InstructionSetType
+open InstructionSetConvert
+
 open Mattc_par
 open Mattc_lex
 open Lexing
@@ -14,6 +18,7 @@ let verboseAfterOptimisation = ref false
 let evaluateFile = ref false
 let optimise = ref false
 let input = ref TerminalInput
+let compile = ref false
 
 let setInputFilename name = input := FileInput(name)
 let setTerminalInput () = input := TerminalInput
@@ -58,6 +63,7 @@ let parseFile filename =
     close_in fileIn;
     let tree = if !optimise then optimiseParseTree tree else tree in
     if !verboseAfterOptimisation && !optimise then (print_endline ("Parse tree for optimised '" ^ filename ^ "':"); print_endline (string_of_parseTree tree));
+    if !compile then print_endline (instructionList_toString (instructionList_of_parseTree tree));
     printFileResult tree filename;
     print_endline "";
     print_endline ""
@@ -69,7 +75,8 @@ let _ =
                     ("-i", Arg.String setInputFilename, "Sets the file to use as input");
                     ("-terminalInput", Arg.Unit setTerminalInput, "Sets the terminal to be used as input");
                     ("-o", Arg.Set optimise, "Optimises the program before evaluation and compilation");
-                    ("-ov", Arg.Set verboseAfterOptimisation, "Prints the parse tree after optimisation")] in
+                    ("-ov", Arg.Set verboseAfterOptimisation, "Prints the parse tree after optimisation");
+                    ("-c", Arg.Set compile, "Compiles the program into an abstract machine language")] in
     let usageMessage = "Compiles MattC Programs" in
     Arg.parse specList parseFile usageMessage;
     print_endline "All files parsed correctly"

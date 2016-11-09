@@ -9,3 +9,4 @@ src/mattc_par.ml
 src/mattc_par.mli
 src/mattc
 *.output
+*.mc.program

@@ -238,12 +238,6 @@ and
 function_definition_eval x currStore = match x with
     | Function_Definition(iden, args, statements) -> identifier_declare iden currStore (Function(x))
 and
-nameOfFunction x = match x with
-                   | Function_Definition(iden, _, _) ->(match iden with
-                                                        | Identifier_Declaration(_, name) -> name
-                                                        | _                               -> raise (EvaluationError ("Cannot take name from identifier assignment"))
-                                                       )
-and
 let_statement_eval x currStore = match x with
     | Let_Statement_Int(iden, exp)        -> let eval = (expression_int_eval exp currStore) in let currStore' = eval.newStore in (identifier_declare iden currStore' eval.evaluation)
     | Let_Statement_Float(iden, exp)      -> let eval = (expression_float_eval exp currStore) in let currStore' = eval.newStore in (identifier_declare iden currStore' eval.evaluation)
