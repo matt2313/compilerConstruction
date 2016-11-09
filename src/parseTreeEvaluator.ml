@@ -90,7 +90,7 @@ let rec storeLookup from searchFor = match from with
                            | NoValue -> storeLookup tl searchFor
                            | _       -> foundValue
                     )
-    | []     -> raise (EvaluationError ("Variable '" ^ searchFor ^ "' not assigned."))
+    | []     -> raise (EvaluationError ("Error in lookup: variable '" ^ searchFor ^ "' not assigned."))
    
 let rec storeUpdate from searchFor newValue = match from with
     | hd1::tl1 -> (match hd1 with
@@ -109,7 +109,7 @@ let rec storeUpdate from searchFor newValue = match from with
                                                              )
                   | []       -> hd1::(storeUpdate tl1 searchFor newValue)
                   )
-    | []       -> raise (EvaluationError ("Variable '" ^ searchFor ^ "' not assigned."))
+    | []       -> raise (EvaluationError ("Error in update: variable '" ^ searchFor ^ "' not assigned."))
     
 let storeAdd addTo newName newValue = match addTo with
     | hd::tl -> (match storeLookup' hd newName with
