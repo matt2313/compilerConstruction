@@ -52,9 +52,3 @@ let instruction_toString x = match x with
     
     | Label(name)         -> "\n" ^ name ^ ":"
     | BlankLine           -> ""
-
-(*
-let rec instructionList_toString x = match x with
-    | hd::tl -> (instruction_toString hd) ^ "\n" ^ (instructionList_toString tl)
-    | []     -> ""
-*)
