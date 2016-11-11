@@ -1,6 +1,11 @@
 open ParseTreeType
 open ParseTreeEvaluator
 open ParseTreeOptimiser
+
+open InstructionSetType
+open InstructionSetConvert
+open InstructionSetEvaluate
+
 open Mattc_par
 open Mattc_lex
 open Lexing
@@ -14,9 +19,20 @@ let verboseAfterOptimisation = ref false
 let evaluateFile = ref false
 let optimise = ref false
 let input = ref TerminalInput
+let compile = ref false
+let outFilename = ref ""
+let simulate = ref false
 
 let setInputFilename name = input := FileInput(name)
 let setTerminalInput () = input := TerminalInput
+
+let setOutFilename newName = outFilename := newName
+let getOutFilename () = if !outFilename == ""
+                        then (match !input with
+                                    | FileInput(name) -> name ^ ".program"
+                                    | TerminalInput   -> "out.program"
+                             )
+                        else !outFilename
 
 let getPosition lexbuf =
     let pos = lexbuf.lex_curr_p in
@@ -49,6 +65,11 @@ let printFileResult x filename =
                                      exit(-1)
     else
         print_endline ("File '" ^ filename ^ "' parsed correctly.")
+
+let rec printInstructionsToFile stream instructions = match instructions with
+    | hd::tl -> output_string stream ((instruction_toString hd) ^ "\n");
+                printInstructionsToFile stream tl
+    | []     -> flush stream
     
 let parseFile filename =
     let fileIn = open_in filename in
@@ -58,6 +79,14 @@ let parseFile filename =
     close_in fileIn;
     let tree = if !optimise then optimiseParseTree tree else tree in
     if !verboseAfterOptimisation && !optimise then (print_endline ("Parse tree for optimised '" ^ filename ^ "':"); print_endline (string_of_parseTree tree));
+    if !compile then (let instructions = instructionList_of_parseTree tree numRegisters in
+                      let newFilename = getOutFilename () in
+                      let fileOut = open_out newFilename in
+                      printInstructionsToFile fileOut (instructions);
+                      close_out fileOut;
+                      print_endline ("Generated '" ^ newFilename ^ "'");
+                      if !simulate then print_endline ("Simulated " ^ newFilename ^ " with return value: '" ^ (string_of_int (evaluateInstructionSet instructions)) ^ "'")
+                     );
     printFileResult tree filename;
     print_endline "";
     print_endline ""
@@ -69,7 +98,11 @@ let _ =
                     ("-i", Arg.String setInputFilename, "Sets the file to use as input");
                     ("-terminalInput", Arg.Unit setTerminalInput, "Sets the terminal to be used as input");
                     ("-o", Arg.Set optimise, "Optimises the program before evaluation and compilation");
-                    ("-ov", Arg.Set verboseAfterOptimisation, "Prints the parse tree after optimisation")] in
+                    ("-no", Arg.Clear optimise, "Stops the code from being optimised");
+                    ("-ov", Arg.Set verboseAfterOptimisation, "Prints the parse tree after optimisation");
+                    ("-c", Arg.Set compile, "Compiles the program into an abstract machine language");
+                    ("-out", Arg.String setOutFilename, "Sets the name of the compiled file");
+                    ("-s", Arg.Set simulate, "Simulates the compiled instruction set")] in
     let usageMessage = "Compiles MattC Programs" in
     Arg.parse specList parseFile usageMessage;
     print_endline "All files parsed correctly"

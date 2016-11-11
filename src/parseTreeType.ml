@@ -1,5 +1,7 @@
 (* This module contains the datatype that is used to store the parse tree *)
 
+exception ParseTreeError of string
+
 type
 parseTree =
       ParseTree_Functions of function_list
@@ -624,5 +626,11 @@ parameter_list_toString x = match x with
     | Parameter_List_List(exp, paramList) -> (expression_toString exp 0 "") ^ ", " ^ (parameter_list_toString paramList)
     | Parameter_List_Empty -> "no params"
     
+let nameOfFunction x = match x with
+                   | Function_Definition(iden, _, _) ->(match iden with
+                                                        | Identifier_Declaration(_, name) -> name
+                                                        | _                               -> raise (ParseTreeError ("Cannot take name from identifier assignment"))
+                                                       )
+
 let string_of_parseTree tree = parseTree_toString tree 0 "  "
 ;;

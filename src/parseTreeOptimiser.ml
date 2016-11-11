@@ -9,6 +9,49 @@ let optimiseReturn x y = {optStore = x; optBranch = y}
 
 
 
+let rec storeLookupSafe' from searchFor = match from with
+    | hd::tl -> if hd.name = searchFor then hd.storedValue else storeLookupSafe' tl searchFor
+    | []     -> NoValue
+let rec storeLookupSafe from searchFor = match from with
+    | hd::tl -> let foundValue = storeLookupSafe' hd searchFor in
+                    (match foundValue with
+                           | NoValue -> storeLookupSafe tl searchFor
+                           | _       -> foundValue
+                    )
+    | []     -> Unknown
+   
+let rec storeUpdateSafe from searchFor newValue = match from with
+    | hd1::tl1 -> (match hd1 with
+                  | hd2::tl2 -> if hd2.name = searchFor then (match (hd2.storedValue, newValue) with
+                                                             | (IntValue(_), IntValue(_))
+                                                             | (FloatValue(_), FloatValue(_))
+                                                             | (BoolValue(_), BoolValue(_))
+                                                             | (StringValue(_), StringValue(_)) 
+                                                             | (_, Unknown)                     -> ({name = searchFor; storedValue = newValue}::tl2)::tl1
+                                                             | (Unknown, _)                     -> ({name = searchFor; storedValue = Unknown}::tl2)::tl1
+                                                             | (x, y)                           -> raise (EvaluationError ("Tried to assign " ^ (valueToString y) ^ " to " ^ (valueToString x)))
+                                                             )
+                                                        else (match storeUpdateSafe (tl2::tl1) searchFor newValue with
+                                                             | hd3::tl3 -> (hd2::hd3)::tl3
+                                                             | []       -> []
+                                                             )
+                  | []       -> hd1::(storeUpdateSafe tl1 searchFor newValue)
+                  )
+    | []       -> []
+
+let storeAddSafe addTo newName newValue = match addTo with
+    | hd::tl -> (match storeLookupSafe' hd newName with
+                | NoValue -> ({name = newName; storedValue = newValue}::hd)::tl
+                | _       -> raise (EvaluationError("A variable or function with the name '" ^ newName ^ "' already exists in the current scope"))
+                )
+    | []     -> raise (EvaluationError ("No scope exists"))
+let identifier_update_safe name currStore newValue = evalReturn(storeUpdateSafe currStore name newValue, newValue)
+let identifier_declare_safe iden currStore newValue = match iden with
+    | Identifier_Declaration(_, name) -> evalReturn(storeAddSafe currStore name newValue, newValue)
+    | _                               -> raise (EvaluationError ("Cannot declare identifier here"))
+
+
+
 (* Helper functions for optimising within new scope *)
 let optimiseInNewScope opt_func currStore = let opt = opt_func (pushScope currStore) in optimiseReturn (popScope opt.optStore), opt.optBranch
 let optimise2InNewScope opt_func_first opt_func_second currStore = let opt = opt_func_first (pushScope currStore) in
@@ -37,29 +80,29 @@ function_list_optimise x currStore = match x with
 and
 function_definition_optimise x currStore = match x with
     | Function_Definition(iden, args, statements) -> let opt = statement_list_optimise statements currStore in
-                                                     let opt' = identifier_declare iden currStore (Function(x)) in
+                                                     let opt' = identifier_declare_safe iden currStore (Function(x)) in
                                                      optimiseReturn opt'.newStore (Function_Definition(iden, args, opt.optBranch))
 and
 let_statement_optimise x currStore = match x with
     | Let_Statement_Int(iden, exp)        -> let opt = expression_int_optimise exp currStore in
                                              let eval = expression_int_partial_eval opt.optBranch opt.optStore in
-                                             let eval' = identifier_declare iden eval.newStore eval.evaluation in
+                                             let eval' = identifier_declare_safe iden eval.newStore eval.evaluation in
                                              optimiseReturn eval'.newStore (Let_Statement_Int(iden, opt.optBranch))
     | Let_Statement_Float(iden, exp)      -> let opt = expression_float_optimise exp currStore in
                                              let eval = expression_float_partial_eval opt.optBranch opt.optStore in
-                                             let eval' = identifier_declare iden eval.newStore eval.evaluation in
+                                             let eval' = identifier_declare_safe iden eval.newStore eval.evaluation in
                                              optimiseReturn eval'.newStore (Let_Statement_Float(iden, opt.optBranch))
     | Let_Statement_Bool(iden, exp)       -> let opt = expression_bool_optimise exp currStore in
                                              let eval = expression_bool_partial_eval opt.optBranch opt.optStore in
-                                             let eval' = identifier_declare iden eval.newStore eval.evaluation in
+                                             let eval' = identifier_declare_safe iden eval.newStore eval.evaluation in
                                              optimiseReturn eval'.newStore (Let_Statement_Bool(iden, opt.optBranch))
     | Let_Statement_String(iden, exp)     -> let opt = expression_string_optimise exp currStore in
                                              let eval = expression_string_partial_eval opt.optBranch opt.optStore in
-                                             let eval' = identifier_declare iden eval.newStore eval.evaluation in
+                                             let eval' = identifier_declare_safe iden eval.newStore eval.evaluation in
                                              optimiseReturn eval'.newStore (Let_Statement_String(iden, opt.optBranch))
     | Let_Statement_Identifier(iden, exp) -> let opt = expression_identifier_optimise exp currStore in
                                              let eval = expression_partial_eval opt.optBranch opt.optStore in
-                                             let eval' = identifier_declare iden eval.newStore eval.evaluation in
+                                             let eval' = identifier_declare_safe iden eval.newStore eval.evaluation in
                                              (match opt.optBranch with
                                                     | Expression_Int(newBranch)        -> optimiseReturn eval'.newStore (Let_Statement_Int(iden, newBranch))
                                                     | Expression_Float(newBranch)      -> optimiseReturn eval'.newStore (Let_Statement_Float(iden, newBranch))
@@ -73,23 +116,23 @@ and
 new_statement_optimise x currStore = match x with
     | New_Statement_Int(iden, exp)        -> let opt = expression_int_optimise exp currStore in
                                              let eval = expression_int_partial_eval opt.optBranch opt.optStore in
-                                             let eval' = identifier_declare iden eval.newStore eval.evaluation in
+                                             let eval' = identifier_declare_safe iden eval.newStore eval.evaluation in
                                              optimiseReturn eval'.newStore (New_Statement_Int(iden, opt.optBranch))
     | New_Statement_Float(iden, exp)      -> let opt = expression_float_optimise exp currStore in
                                              let eval = expression_float_partial_eval opt.optBranch opt.optStore in
-                                             let eval' = identifier_declare iden eval.newStore eval.evaluation in
+                                             let eval' = identifier_declare_safe iden eval.newStore eval.evaluation in
                                              optimiseReturn eval'.newStore (New_Statement_Float(iden, opt.optBranch))
     | New_Statement_Bool(iden, exp)       -> let opt = expression_bool_optimise exp currStore in
                                              let eval = expression_bool_partial_eval opt.optBranch opt.optStore in
-                                             let eval' = identifier_declare iden eval.newStore eval.evaluation in
+                                             let eval' = identifier_declare_safe iden eval.newStore eval.evaluation in
                                              optimiseReturn eval'.newStore (New_Statement_Bool(iden, opt.optBranch))
     | New_Statement_String(iden, exp)     -> let opt = expression_string_optimise exp currStore in
                                              let eval = expression_string_partial_eval opt.optBranch opt.optStore in
-                                             let eval' = identifier_declare iden eval.newStore eval.evaluation in
+                                             let eval' = identifier_declare_safe iden eval.newStore eval.evaluation in
                                              optimiseReturn eval'.newStore (New_Statement_String(iden, opt.optBranch))
     | New_Statement_Identifier(iden, exp) -> let opt = expression_identifier_optimise exp currStore in
                                              let eval = expression_partial_eval opt.optBranch opt.optStore in
-                                             let eval' = identifier_declare iden eval.newStore eval.evaluation in
+                                             let eval' = identifier_declare_safe iden eval.newStore eval.evaluation in
                                              (match opt.optBranch with
                                                     | Expression_Int(newBranch)        -> optimiseReturn eval'.newStore (New_Statement_Int(iden, newBranch))
                                                     | Expression_Float(newBranch)      -> optimiseReturn eval'.newStore (New_Statement_Float(iden, newBranch))
@@ -147,12 +190,12 @@ expression_int_optimise x currStore = match x with
 (*
     | Expression_Int_Declare(iden, exp) -> let opt = expression_int_optimise exp currStore in
                                            let eval = expression_int_partial_eval opt.optBranch opt.optStore in
-                                           let dec = identifier_declare iden eval.newStore eval.evaluation in
+                                           let dec = identifier_declare_safe iden eval.newStore eval.evaluation in
                                            optimiseReturn dec.newStore (Expression_Int_Declare(iden, opt.optBranch))
     | Expression_Int_Assign(iden, exp)  -> let opt = expression_int_optimise exp currStore in
                                            let eval = expression_int_partial_eval opt.optBranch opt.optStore in
                                            let iden = expression
-                                           let dec = identifier_update (extractVariableRef eval.evaluation) eval'.newStore eval'.evaluation in
+                                           let dec = identifier_update_safe (extractVariableRef eval.evaluation) eval'.newStore eval'.evaluation in
                                            optimiseReturn dec.newStore (Expression_Int_Assign(iden, opt.optBranch))
 *)
     | Expression_Float_To_Int(exp)      -> let eval = (expression_float_partial_eval exp currStore) in
@@ -294,7 +337,7 @@ expression_string_optimise x currStore = match x with
 and
 expression_identifier_optimise x currStore : expression optimiseReturn = match x with
     | Expression_Identifier_Function_Call(iden, params) -> (match iden with
-                                                                  | Identifier_Reference(idenName) -> (match storeLookup currStore idenName with
+                                                                  | Identifier_Reference(idenName) -> (match storeLookupSafe currStore idenName with
                                                                                                             | Function(Function_Definition(_, _, statList)) -> let opt = statement_list_optimise statList currStore in
                                                                                                                                                                let eval = statement_list_partial_eval opt.optBranch opt.optStore in
                                                                                                                                                                (match eval.evaluation with
@@ -401,10 +444,10 @@ expression_int_partial_eval x currStore = match x with
                                            )
     (*
     | Expression_Int_Declare(iden, exp) -> let eval = (expression_int_partial_eval exp currStore) in
-                                           identifier_declare iden eval.newStore eval.evaluation
+                                           identifier_declare_safe iden eval.newStore eval.evaluation
     | Expression_Int_Assign(iden, exp)  -> let eval  = expression_identifier_eval iden currStore in
                                            let eval' = (expression_int_partial_eval exp currStore) in
-                                           identifier_update (extractVariableRef eval.evaluation) eval'.newStore eval'.evaluation
+                                           identifier_update_safe (extractVariableRef eval.evaluation) eval'.newStore eval'.evaluation
     *)
 and
 expression_float_partial_eval x currStore = match x with
@@ -509,8 +552,9 @@ and
 expression_identifier_partial_eval x currStore = match x with
     | Expression_Identifier_Operation(op)               -> identifier_operation_partial_eval op currStore
     | Expression_Identifier_Function_Call(iden, params) -> (match iden with
-                                                                  | Identifier_Reference(idenName) -> (match storeLookup currStore idenName with
+                                                                  | Identifier_Reference(idenName) -> (match storeLookupSafe currStore idenName with
                                                                                                              | Function(fun_def) -> function_call_partial_eval fun_def params currStore
+                                                                                                             | Unknown           -> evalReturn(currStore, Unknown)
                                                                                                              | _                 -> raise (EvaluationError ("Expected function identifier but got variable"))
                                                                                                       )
                                                                   | _                              -> raise (EvaluationError ("Cannot call function declaration"))
@@ -518,7 +562,7 @@ expression_identifier_partial_eval x currStore = match x with
     | _                                                 -> evalReturn(currStore, Unknown)
 and
 function_call_partial_eval fun_def params currStore = match fun_def with
-    | Function_Definition(Identifier_Declaration(functionType, functionName), args, statements) -> let currStore' = matchArgsToParams args params (pushScope currStore) in
+    | Function_Definition(Identifier_Declaration(functionType, functionName), args, statements) -> let currStore' = matchArgsToParams_partial args params (pushScope currStore) in
                                                                                                    let returnValue = evalInNewScope (statement_list_partial_eval statements) currStore' in
                                                                                                        (match (functionType, returnValue.evaluation) with
                                                                                                        | (Int, IntValue(_))       
@@ -530,6 +574,12 @@ function_call_partial_eval fun_def params currStore = match fun_def with
                                                                                                        | (_, _)                   -> raise (EvaluationError ("Return value does not match the function's type"))
                                                                                                        )
     | _                                                                                         -> raise (EvaluationError ("Function definition does not specify type"))
+and
+matchArgsToParams_partial args params currStore = match (args, params) with
+    | (Argument_List_Empty, Parameter_List_Empty)                        -> currStore
+    | (Argument_List_Element(iden), Parameter_List_Element(exp))         -> let eval = expression_partial_eval exp currStore in (identifier_declare_safe iden eval.newStore eval.evaluation).newStore
+    | (Argument_List_List(iden, args), Parameter_List_List(exp, params)) -> let eval = expression_partial_eval exp currStore in let currStore' = (identifier_declare_safe iden eval.newStore eval.evaluation).newStore in matchArgsToParams_partial args params currStore'
+    | _                                                                  -> raise (EvaluationError ("Number of arguments and parameters don't match"))
 and
 int_operation_partial_eval x currStore = let opt = int_operation_optimise x currStore in
                                          match opt.optBranch with
@@ -1192,6 +1242,8 @@ identifier_operation_partial_eval x currStore : evalReturn = match x with
                                                           (
                                                           match (lhsEval.evaluation, rhsEval.evaluation) with
                                                           | (StringValue(lhsValue), StringValue(rhsValue)) -> string_operation_partial_eval (Operation_String_Concat_String(Expression_String_Literal(lhsValue), Expression_String_Literal(rhsValue))) rhsEval.newStore
+                                                          | (Unknown, _)                                   
+                                                          | (_, Unknown)                                   -> evalReturn(rhsEval.newStore, Unknown)
                                                           | _                                              -> raise (EvaluationError("Can only use ^ on strings."))
                                                           )
     | Operation_Substring_Identifier_Identifier_Identifier(strExp, startExp, lenExp) -> let strExpEval = expression_identifier_partial_eval strExp currStore in
@@ -1200,6 +1252,9 @@ identifier_operation_partial_eval x currStore : evalReturn = match x with
                                                                                         (
                                                                                         match (strExpEval.evaluation, startExpEval.evaluation, lenExpEval.evaluation) with
                                                                                         | (StringValue(strExpValue), IntValue(startExpValue), IntValue(lenExpValue)) -> string_operation_partial_eval (Operation_Substring_String_Int_Int(Expression_String_Literal(strExpValue), Expression_Int_Literal(startExpValue), Expression_Int_Literal(lenExpValue))) lenExpEval.newStore
+                                                                                        | (Unknown, _, _)                                                            
+                                                                                        | (_, Unknown, _)                                                            
+                                                                                        | (_, _, Unknown)                                                            -> evalReturn(lenExpEval.newStore, Unknown)
                                                                                         | _                                                                          -> raise (EvaluationError("Substring must take a string and 2 ints."))
                                                                                         )
 and

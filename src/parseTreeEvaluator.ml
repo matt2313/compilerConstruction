@@ -90,7 +90,7 @@ let rec storeLookup from searchFor = match from with
                            | NoValue -> storeLookup tl searchFor
                            | _       -> foundValue
                     )
-    | []     -> raise (EvaluationError ("Variable '" ^ searchFor ^ "' not assigned."))
+    | []     -> raise (EvaluationError ("Error in lookup: variable '" ^ searchFor ^ "' not assigned."))
    
 let rec storeUpdate from searchFor newValue = match from with
     | hd1::tl1 -> (match hd1 with
@@ -109,7 +109,7 @@ let rec storeUpdate from searchFor newValue = match from with
                                                              )
                   | []       -> hd1::(storeUpdate tl1 searchFor newValue)
                   )
-    | []       -> raise (EvaluationError ("Variable '" ^ searchFor ^ "' not assigned."))
+    | []       -> raise (EvaluationError ("Error in update: variable '" ^ searchFor ^ "' not assigned."))
     
 let storeAdd addTo newName newValue = match addTo with
     | hd::tl -> (match storeLookup' hd newName with
@@ -237,12 +237,6 @@ main_function_definition_eval x currStore = match x with
 and
 function_definition_eval x currStore = match x with
     | Function_Definition(iden, args, statements) -> identifier_declare iden currStore (Function(x))
-and
-nameOfFunction x = match x with
-                   | Function_Definition(iden, _, _) ->(match iden with
-                                                        | Identifier_Declaration(_, name) -> name
-                                                        | _                               -> raise (EvaluationError ("Cannot take name from identifier assignment"))
-                                                       )
 and
 let_statement_eval x currStore = match x with
     | Let_Statement_Int(iden, exp)        -> let eval = (expression_int_eval exp currStore) in let currStore' = eval.newStore in (identifier_declare iden currStore' eval.evaluation)

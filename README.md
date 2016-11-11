@@ -23,8 +23,12 @@ Repository for the source files and documentation of the MattC compiler, created
   - The `-i` option specifies a file to use as input for read functions wile evaluating
   - The `-terminalInput` option sets the input to come directly from the terminal. (This is the default setting)
   - The `-o` option optimises the code before evaluation and compilation
+  - The `-no` option stops the code from being optimised. (This is the default setting)
   - The `-ov` option prints the optimised parse tree, has no effect unless `-o` is also set
   - The `-q` option clears the `-v` and `-ov` options
+  - The `-c` option actually compiles the code
+  - The `-out` option sets the filename of the compiled file
+  - The `-s` option simulates the generated machine instructions and shows the return value
 
 
 ## Syntax in a Nutshell
