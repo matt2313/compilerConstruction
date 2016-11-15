@@ -1,13 +1,21 @@
-outname := ../bin/mattc
-
-windows: outname := ../bin/mattc.exe
-windows: mattc
-	
-unix: outname := ../bin/mattc
-unix: mattc
-	
 all: unix
 	
+
+set-windows:
+	$(eval outname := ../bin/mattc.exe)
+windows: set-windows mattc
+	
+set-unix:
+	$(eval outname := ../bin/mattc)
+unix: set-unix mattc
+	
+.PHONY: set-windows
+.PHONY: windows
+.PHONY: set-unix
+.PHONY: unix
+.PHONY: all
+
+
 mattc: parseTreeType.cmo parseTreeEvaluator.cmo parseTreeOptimiser.cmo instructionSetType.cmo instructionSetConvert.cmo instructionSetEvaluate.cmo mattc_par.cmo mattc_lex.cmo mattc.cmo
 	ocamlc -o $(outname) parseTreeType.cmo parseTreeEvaluator.cmo parseTreeOptimiser.cmo instructionSetType.cmo instructionSetConvert.cmo instructionSetEvaluate.cmo mattc_lex.cmo mattc_par.cmo mattc.cmo
 
