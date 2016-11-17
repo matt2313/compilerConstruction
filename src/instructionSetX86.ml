@@ -4,7 +4,7 @@ open InstructionSetType
 exception X86GenerationError of string
 
 let variableSize = 8    (* Number of bytes in an int *)
-let stackStart = -32     (* Position of the first element of the stack we can write to *)
+let stackStart = -8     (* Position of the first element of the stack we can write to *)
 let stackDirection = -1 (* The stack grows down *)
 
 type addressX86 =
@@ -79,13 +79,13 @@ let addressToX86 x = match x with
 let operationX86 lhs rhs op =
     let lhsX86 = addressToX86 lhs in
     let rhsX86 = addressToX86 rhs in
-    [X86_MoveValueOf(lhsX86, GeneralRegisterX86(0)); op (rhsX86)]
+    op lhsX86 rhsX86
 
 let instructionToX86List x = match x with
-    | Add(lhs, rhs)      -> operationX86 lhs rhs (fun (x) -> X86_Add(x, GeneralRegisterX86(0)))
-    | Subtract(lhs, rhs) -> operationX86 lhs rhs (fun (x) -> X86_Sub(x, GeneralRegisterX86(0)))
-    | Multiply(lhs, rhs) -> operationX86 lhs rhs (fun (x) -> X86_Mul(x))
-    | Divide(lhs, rhs)   -> operationX86 lhs rhs (fun (x) -> X86_Div(x))
+    | Add(lhs, rhs)      -> operationX86 lhs rhs (fun x y -> [X86_MoveValueOf(y, GeneralRegisterX86(0)); X86_Add(x, GeneralRegisterX86(0))])
+    | Subtract(lhs, rhs) -> operationX86 lhs rhs (fun x y -> [X86_MoveValueOf(y, GeneralRegisterX86(0)); X86_Sub(x, GeneralRegisterX86(0))])
+    | Multiply(lhs, rhs) -> operationX86 lhs rhs (fun x y -> [X86_MoveValueOf(x, GeneralRegisterX86(0)); X86_Mul(y); X86_MoveValueOf(y, GeneralRegisterX86(0))])
+    | Divide(lhs, rhs)   -> operationX86 lhs rhs (fun x y -> [X86_MoveValueOf(x, GeneralRegisterX86(0)); X86_Div(y); X86_MoveValueOf(y, GeneralRegisterX86(0))])
     
     | StoreValue(addr)   -> [X86_MoveValueOf(GeneralRegisterX86(0), (addressToX86 addr))]
     | StoreValueIn(addr) -> [X86_MoveValueOf_In(GeneralRegisterX86(0), (addressToX86 addr))]
