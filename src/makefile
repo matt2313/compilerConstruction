@@ -15,7 +15,7 @@ unix: set-unix mattc
 .PHONY: unix
 
 mattc: mattc.cmo
-	ocamlc -o $(outname) parseTreeType.cmo parseTreeEvaluator.cmo parseTreeOptimiser.cmo instructionSetType.cmo instructionSetConvert.cmo instructionSetEvaluate.cmo mattc_lex.cmo mattc_par.cmo mattc.cmo
+	ocamlc -o $(outname) parseTreeType.cmo parseTreeEvaluator.cmo parseTreeOptimiser.cmo instructionSetType.cmo instructionSetConvert.cmo instructionSetEvaluate.cmo instructionSetX86.cmo mattc_lex.cmo mattc_par.cmo mattc.cmo
 
 parseTreeType.cmo: parseTreeType.ml
 	ocamlc -c "parseTreeType.ml"

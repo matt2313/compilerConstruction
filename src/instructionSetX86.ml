@@ -3,35 +3,115 @@ open InstructionSetType
 
 exception X86GenerationError of string
 
+let variableSize = 8    (* Number of bytes in an int *)
+let stackStart = -32     (* Position of the first element of the stack we can write to *)
+let stackDirection = -1 (* The stack grows down *)
+
 type addressX86 =
-    | NoAddress
+    | GeneralRegisterX86 of int (* general registers eax to e15 *)
+    | BasePointerX86
+    | StackPointerX86
+    | StackAddressX86 of int
 
 type instructionX86 =
-    | X86_MoveData of addressX86 * addressX86
+    | X86_Add      of addressX86 * addressX86
+    | X86_Sub      of addressX86 * addressX86
+    | X86_Mul      of addressX86                    (* imul and idiv assume the lhs is the 1st general register *)
+    | X86_Div      of addressX86
+    
+    | X86_MoveAddress of addressX86 * addressX86    (* Moves the value of one address into another address *)
+    | X86_MoveConstant of int * addressX86          (* Moves a constant value into an address *)
+    | X86_MoveValueOf of addressX86 * addressX86    (* Moves a value into the address another address points to *)
+    | X86_MoveValueOf_In of addressX86 * addressX86 (* Like X86_MoveValueOf, but treats the 2nd address as a pointer *)
+    | X86_Push of addressX86                        (* Pushes the value in the given address onto the stack *)
+    | X86_Pop of addressX86                         (* Pops the top value from the stack into the given address *)
+    
+    | X86_AddAddress of addressX86 * int            (* Add a constant to the value in an address *)
 
 
-let addressX86_toString x = match x with
-    | NoAddress -> "noaddress"
+let isRegisterAddress x = match x with
+    | StackAddressX86(_) -> false
+    | _                  -> true
+    
+let rec addressX86_toString x = match x with
+    | GeneralRegisterX86(0) -> "%rax"
+    | GeneralRegisterX86(1) -> "%rbx"
+    | GeneralRegisterX86(2) -> "%rcx"
+    | GeneralRegisterX86(3) -> "%rdx"
+    | GeneralRegisterX86(4) -> "%rsi"
+    | GeneralRegisterX86(5) -> "%rdi"
+    | GeneralRegisterX86(n) -> if n <= 13 then "%r" ^ (string_of_int (n + 2)) else raise (X86GenerationError ("General register number too high: " ^ (string_of_int n)))
+    | BasePointerX86        -> "%rbp"
+    | StackPointerX86       -> "%rsp"
+    | StackAddressX86(n)    -> (string_of_int n) ^ "(" ^ (addressX86_toString BasePointerX86) ^ ")"
+
+let addressX86_toInt x = match x with
+    | StackAddressX86(n) -> n
+    | _                  -> raise (X86GenerationError "Cannot convert this addressX86 to int")
 
 let instructionX86_toString x = match x with
-    | X86_MoveData(lhs, rhs) -> "movd " ^ (addressX86_toString lhs) ^ " " ^ (addressX86_toString rhs)
-    
+    | X86_Add(lhs, rhs)            -> "addq " ^ (addressX86_toString lhs) ^ ", " ^ (addressX86_toString rhs)
+    | X86_Sub(lhs, rhs)            -> "subq " ^ (addressX86_toString lhs) ^ ", " ^ (addressX86_toString rhs)
+    | X86_Mul(addr)                -> "imulq " ^ (addressX86_toString addr)
+    | X86_Div(addr)                -> "divq " ^ (addressX86_toString addr)
 
-(*
-type instruction =
-    | Add of address * address      (* Add value of 2 addresses and store the result in $acc *)
-    | Subtract of address * address (* Subtract value of 2 addresses and store the result in $acc *)
-    | Multiply of address * address (* Multiply value of 2 addresses and store the result in $acc *)
-    | Divide of address * address   (* Divide value of 2 addresses and store the result in $acc *)
+    | X86_MoveAddress(lhs, rhs)    -> "leaq " ^ (addressX86_toString lhs) ^ ", " ^ (addressX86_toString rhs)
+    | X86_MoveConstant(n, addr)    -> "movq $" ^ (string_of_int n) ^ ", " ^ (addressX86_toString addr)
+    | X86_MoveValueOf(lhs, rhs)    -> "movq " ^ (addressX86_toString lhs) ^ ", " ^ (addressX86_toString rhs)
+    | X86_MoveValueOf_In(lhs, rhs) -> "movq " ^ (addressX86_toString lhs) ^ ", (" ^ (addressX86_toString rhs) ^ ")"
     
-    | StoreValue of address         (* Take the value in $acc and store it in memory *)
-    | StoreValueIn of address       (* Take the value in $acc and store it in the memory address referenced by the given address *)
-    | LoadConstant of int           (* Place a literal value into $acc *)
-    | LoadAddress of address        (* Place an address into $acc (NOT the value the address holds) *)
-    | PushStack of int              (* Push the stack by the given ammount *)
-    | PopStack of int               (* Pop the stack by the given ammount *)
+    | X86_Push(addr)               -> "pushq " ^ (addressX86_toString addr)
+    | X86_Pop(addr)                -> "popq " ^ (addressX86_toString addr)
     
-    | Label of string               (* Label used for jumping *)
+    | X86_AddAddress(addr, n)      -> if isRegisterAddress addr
+                                      then let addrStr = addressX86_toString addr in
+                                           "lea " ^ (string_of_int n) ^ "(" ^ addrStr ^ "), " ^ addrStr
+                                      else raise (X86GenerationError "Cannot use AddAddress on stack address")
+
+let addressToX86 x = match x with
+    | RegisterNum(n)    -> if 0 < n && n <= 13 then GeneralRegisterX86(n) else raise (X86GenerationError ("Cannot convert register num: " ^ (string_of_int n)))
+    | StackAddress(n)   -> StackAddressX86(stackStart + stackDirection * variableSize * (n - 1))
+    | RegisterAcc       -> GeneralRegisterX86(0)
+    | RegisterStackPtr  -> StackPointerX86
+    | RegisterBasePtr   -> BasePointerX86
+    | NoAddress         -> raise (X86GenerationError "Cannot convert NoAddress to X86")
     
-    | BlankLine                     (* This isn't an instruction, it's used to render the output nicely *)
-*)
+let operationX86 lhs rhs op =
+    let lhsX86 = addressToX86 lhs in
+    let rhsX86 = addressToX86 rhs in
+    [X86_MoveValueOf(lhsX86, GeneralRegisterX86(0)); op (rhsX86)]
+
+let instructionToX86List x = match x with
+    | Add(lhs, rhs)      -> operationX86 lhs rhs (fun (x) -> X86_Add(x, GeneralRegisterX86(0)))
+    | Subtract(lhs, rhs) -> operationX86 lhs rhs (fun (x) -> X86_Sub(x, GeneralRegisterX86(0)))
+    | Multiply(lhs, rhs) -> operationX86 lhs rhs (fun (x) -> X86_Mul(x))
+    | Divide(lhs, rhs)   -> operationX86 lhs rhs (fun (x) -> X86_Div(x))
+    
+    | StoreValue(addr)   -> [X86_MoveValueOf(GeneralRegisterX86(0), (addressToX86 addr))]
+    | StoreValueIn(addr) -> [X86_MoveValueOf_In(GeneralRegisterX86(0), (addressToX86 addr))]
+    | LoadConstant(n)    -> [X86_MoveConstant(n, GeneralRegisterX86(0))]
+    | LoadAddress(addr)  -> [X86_MoveAddress((addressToX86 addr), (GeneralRegisterX86(0)))]
+    
+    (*
+    | PushStack(n)       -> [X86_Push(BasePointerX86)]
+    | PopStack(n)        -> [X86_Pop(BasePointerX86)]
+    *)
+    
+    (*
+    | PushStack(n)       -> [X86_AddAddress(StackPointerX86, stackDirection * variableSize * n)]
+    | PopStack(n)        -> [X86_AddAddress(StackPointerX86, -1 * (stackDirection * variableSize * n))]
+    *)
+    
+    
+    | PushStack(n)       -> [X86_MoveConstant(n * stackDirection * variableSize, GeneralRegisterX86(0)); X86_Add(GeneralRegisterX86(0), StackPointerX86)]
+    | PopStack(n)        -> [X86_MoveConstant(-1 * n * stackDirection * variableSize, GeneralRegisterX86(0)); X86_Add(GeneralRegisterX86(0), StackPointerX86)]
+    
+    
+    | MoveData(lhs, rhs) -> [X86_MoveValueOf((addressToX86 lhs), (addressToX86 rhs))]
+    
+    | Label(_)
+    | BlankLine          -> []
+
+let rec instructionListToX86List x = match x with
+    | hd::tl -> (instructionToX86List hd)@(instructionListToX86List tl)
+    | []     -> []

@@ -5,6 +5,7 @@ open ParseTreeOptimiser
 open InstructionSetType
 open InstructionSetConvert
 open InstructionSetEvaluate
+open InstructionSetX86
 
 open Mattc_par
 open Mattc_lex
@@ -81,7 +82,7 @@ let rec printInstructionsToFile stream instructions = match instructions with
     | []     -> flush stream
     
 let rec printX86InstructionsToFile stream instructions = match instructions with
-    | hd::tl -> output_string stream ("#" ^ (instruction_toString hd) ^ "\n");
+    | hd::tl -> output_string stream ("\t" ^ (instructionX86_toString hd) ^ "\n");
                 printX86InstructionsToFile stream tl
     | []     -> flush stream
 
@@ -120,7 +121,7 @@ let parseFile filename =
                                              let newFilename = getOutFilename () in
                                              let fileOut = open_out newFilename in
                                              let fileIn = open_in templateFileName in
-                                             printX86InstructionsToFileWithTemplate fileIn fileOut instructions;
+                                             printX86InstructionsToFileWithTemplate fileIn fileOut (instructionListToX86List instructions);
                                              close_out fileOut;
                                              close_in fileIn;
                                              print_endline ("Generated '" ^ newFilename ^ "'")
