@@ -1,0 +1,52 @@
+	.file	"template.c"
+	.section .rdata,"dr"
+.LC0:
+	.ascii "%d\12\0"
+	.text
+	.globl	print
+	.def	print;	.scl	2;	.type	32;	.endef
+	.seh_proc	print
+print:
+	pushq	%rbp
+	.seh_pushreg	%rbp
+	movq	%rsp, %rbp
+	subq	$32, %rsp
+	.seh_stackalloc	32
+	.seh_setframe	%rbp, 32
+	.seh_endprologue
+	movl	%ecx, 16(%rbp)
+	leaq	.LC0(%rip), %rax
+	movl	16(%rbp), %edx
+	movq	%rax, %rcx
+	call	printf
+	movl	$0, %ecx
+	call	exit
+	nop
+	.seh_endproc
+	.def	__main;	.scl	2;	.type	32;	.endef
+	.globl	main
+	.def	main;	.scl	2;	.type	32;	.endef
+	.seh_proc	main
+main:
+	pushq	%rbp
+	.seh_pushreg	%rbp
+	movq	%rsp, %rbp
+	subq	$48, %rsp
+	.seh_stackalloc	48
+	.seh_setframe	%rbp, 48
+	.seh_endprologue
+	call	__main
+	movl	$260, -4(%rbp)
+	movl	-4(%rbp), %eax
+    
+##### START_GENERATED_CODE
+    
+	movl	%eax, %ecx
+	call	print
+	movl	$1, %eax
+	addq	$48, %rsp
+	popq	%rbp
+	ret
+	.seh_endproc
+	.def	printf;	.scl	2;	.type	32;	.endef
+	.def	exit;	.scl	2;	.type	32;	.endef

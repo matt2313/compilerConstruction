@@ -5,7 +5,8 @@ Repository for the source files and documentation of the MattC compiler, created
 
 ## Contents
 
-- An `/srs/` folder that holds the source files for the compiler (`parseTreeType.ml`, `parseTreeEvaluator.ml`, `parseTreeOptimiser.ml`, `mattc_par.mly`, `mattc_lex.mly`, `mattc.ml`), as well as scripts to compile the compiler (`build_mattc.sh`, `build_mattc.bat`)
+- An `/srs/` folder that holds the source files for the compiler, as well as scripts a makefile compile the compiler
+- A `/bin` folder containing the compiled compiler
 - A `/test/` folder containing test programs that demonstrate code written in MattC
 - A `/doc/` folder containing documentation on how to write MattC code
 
@@ -13,9 +14,8 @@ Repository for the source files and documentation of the MattC compiler, created
 ## How to Run the Compiler
 
 1. Navigate to the `/src/` folder
-2. Run `build_mc.sh` (for unix) or `build_mc.bat` (for windows)
+2. Run `make unix` (for unix) or `make windows` (for windows)
   - On the lab machines, remember to run the command `module load opam` so that the ocaml binaries are available
-  - `mattc.ml` will normally show lots of warnings about incomplete pattern matching when compiled, until the issue is fixed these warnings are being suppressed by the compile script
 3. You can then run `mattc <filename>`, where `<filename>` is the file you want to compile. MattC files use the `.mc` file extension
   - The compiler will work on any number of files given as arguments
   - The `-v` option prints the full parse tree

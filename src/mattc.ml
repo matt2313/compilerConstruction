@@ -5,6 +5,7 @@ open ParseTreeOptimiser
 open InstructionSetType
 open InstructionSetConvert
 open InstructionSetEvaluate
+open InstructionSetX86
 
 open Mattc_par
 open Mattc_lex
@@ -13,13 +14,18 @@ open Lexing
 type inputType =
     | TerminalInput
     | FileInput of string
+
+type compileType =
+    | CompileNone
+    | CompileAbstract
+    | CompileX86 of string
     
 let verbose = ref false
 let verboseAfterOptimisation = ref false
 let evaluateFile = ref false
 let optimise = ref false
 let input = ref TerminalInput
-let compile = ref false
+let compile = ref CompileNone
 let outFilename = ref ""
 let simulate = ref false
 
@@ -33,6 +39,10 @@ let getOutFilename () = if !outFilename == ""
                                     | TerminalInput   -> "out.program"
                              )
                         else !outFilename
+
+let setCompileNone () = compile := CompileNone
+let setCompileAbstract () = compile := CompileAbstract
+let setCompileX86 templateFilename = compile := CompileX86 templateFilename
 
 let getPosition lexbuf =
     let pos = lexbuf.lex_curr_p in
@@ -71,6 +81,25 @@ let rec printInstructionsToFile stream instructions = match instructions with
                 printInstructionsToFile stream tl
     | []     -> flush stream
     
+let rec printX86InstructionsToFile stream instructions = match instructions with
+    | hd::tl -> output_string stream ("\t" ^ (instructionX86_toString hd) ^ "\n");
+                printX86InstructionsToFile stream tl
+    | []     -> flush stream
+
+let rec printX86InstructionsToFileWithTemplate template destination instructions =
+    try
+        while true do
+            let currLine = input_line template in
+            (* Copy the template file to the destination file, but replacing a specific line with the generated code *)
+            if currLine = "##### START_GENERATED_CODE"
+            then (output_string destination ("# Start of generated code" ^ "\n");
+                  printX86InstructionsToFile destination instructions;
+                  output_string destination ("# End of generated code" ^ "\n")
+                 )
+            else output_string destination (currLine ^ "\n")
+        done
+    with End_of_file -> ()
+    
 let parseFile filename =
     let fileIn = open_in filename in
     let tree = Lexing.from_channel fileIn
@@ -79,14 +108,24 @@ let parseFile filename =
     close_in fileIn;
     let tree = if !optimise then optimiseParseTree tree else tree in
     if !verboseAfterOptimisation && !optimise then (print_endline ("Parse tree for optimised '" ^ filename ^ "':"); print_endline (string_of_parseTree tree));
-    if !compile then (let instructions = instructionList_of_parseTree tree numRegisters in
-                      let newFilename = getOutFilename () in
-                      let fileOut = open_out newFilename in
-                      printInstructionsToFile fileOut (instructions);
-                      close_out fileOut;
-                      print_endline ("Generated '" ^ newFilename ^ "'");
-                      if !simulate then print_endline ("Simulated " ^ newFilename ^ " with return value: '" ^ (string_of_int (evaluateInstructionSet instructions)) ^ "'")
-                     );
+    (match !compile with
+           | CompileNone                  -> ()
+           | CompileAbstract              -> let instructions = instructionList_of_parseTree tree numRegisters in
+                                             let newFilename = getOutFilename () in
+                                             let fileOut = open_out newFilename in
+                                             printInstructionsToFile fileOut instructions;
+                                             close_out fileOut;
+                                             print_endline ("Generated '" ^ newFilename ^ "'");
+                                             if !simulate then print_endline ("Simulated " ^ newFilename ^ " with return value: '" ^ (string_of_int (evaluateInstructionSet instructions)) ^ "'")
+           | CompileX86(templateFileName) -> let instructions = instructionList_of_parseTree tree numRegisters in
+                                             let newFilename = getOutFilename () in
+                                             let fileOut = open_out newFilename in
+                                             let fileIn = open_in templateFileName in
+                                             printX86InstructionsToFileWithTemplate fileIn fileOut (instructionListToX86List instructions);
+                                             close_out fileOut;
+                                             close_in fileIn;
+                                             print_endline ("Generated '" ^ newFilename ^ "'")
+    );
     printFileResult tree filename;
     print_endline "";
     print_endline ""
@@ -100,7 +139,8 @@ let _ =
                     ("-o", Arg.Set optimise, "Optimises the program before evaluation and compilation");
                     ("-no", Arg.Clear optimise, "Stops the code from being optimised");
                     ("-ov", Arg.Set verboseAfterOptimisation, "Prints the parse tree after optimisation");
-                    ("-c", Arg.Set compile, "Compiles the program into an abstract machine language");
+                    ("-c", Arg.Unit setCompileAbstract, "Compiles the program into an abstract machine language");
+                    ("-x86", Arg.String setCompileX86, "Compiles the program into x86 code with the given template");
                     ("-out", Arg.String setOutFilename, "Sets the name of the compiled file");
                     ("-s", Arg.Set simulate, "Simulates the compiled instruction set")] in
     let usageMessage = "Compiles MattC Programs" in

@@ -50,5 +50,5 @@ let instruction_toString x = match x with
     | PopStack(iVal)        -> "pop  " ^ (string_of_int iVal)
     | MoveData(src, dest)   -> "mov  " ^ (address_toString src) ^ " " ^ (address_toString dest)
     
-    | Label(name)         -> "\n" ^ name ^ ":"
+    | Label(name)         -> name ^ ":"
     | BlankLine           -> ""
