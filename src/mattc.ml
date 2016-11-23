@@ -116,7 +116,7 @@ let parseFile filename =
                                              printInstructionsToFile fileOut instructions;
                                              close_out fileOut;
                                              print_endline ("Generated '" ^ newFilename ^ "'");
-                                             if !simulate then print_endline ("Simulated " ^ newFilename ^ " with return value: '" ^ (string_of_int (evaluateInstructionSet instructions)) ^ "'")
+                                             if !simulate then print_endline ("Simulated '" ^ newFilename ^ "' with return value: '" ^ (string_of_int (evaluateInstructionSet instructions)) ^ "'")
            | CompileX86(templateFileName) -> let instructions = instructionList_of_parseTree tree numRegisters in
                                              let newFilename = getOutFilename () in
                                              let fileOut = open_out newFilename in

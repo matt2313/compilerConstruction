@@ -72,16 +72,45 @@ let processInstruction x = match x with
                                            | StackAddress(iVal) -> setRegAcc iVal
                                            | _                  -> raise (InstructionSimulationError "Attempt to load non-stack memory address")
                                     )
-    | PushStack(iVal)            -> setRegStack ((getRegStack ()) + iVal)
-    | PopStack(iVal)             -> setRegStack ((getRegStack ()) - iVal)
     | MoveData(addrFrom, addrTo) -> setValueOf addrTo (getValueFrom addrFrom)
     
-    | Label(name)                -> ()
+    | PushStack(iVal)            -> setRegStack ((getRegStack ()) + iVal)
+    | PushOnStack(addr)          -> setRegStack ((getRegStack ()) + 1); setRam (getRegStack ()) (getValueFrom addr)
+    | PushRegisters              -> for n = 1 to numRegisters do
+                                        setRegStack ((getRegStack ()) + 1);
+                                        setRam (getRegStack ()) (getRegGeneric n)
+                                    done
+    | PopStack(iVal)             -> setRegStack ((getRegStack ()) - iVal)
+    | PopFromStack(addr)         -> setValueOf addr (getRam (getRegStack ())); setRegStack ((getRegStack ()) - 1)
+    | PopRegisters               -> for n = 0 to (numRegisters - 1) do
+                                        setRegGeneric (numRegisters - n) (getRam (getRegStack ()));
+                                        setRegStack ((getRegStack ()) - 1)
+                                    done
+    
+    | Jump(_)                       
+    | JumpIfZero(_)                 
+    | JumpIfNotZero(_)              
+    | JumpIfGreaterThanZero(_)      
+    | JumpIfGreaterOrEqualToZero(_) 
+    | Label(_)                      
     | BlankLine                  -> ()
     
-let rec evaluateInstructionSet' x = match x with
-    | hd::tl -> processInstruction hd;evaluateInstructionSet' tl
+let rec findLabel lbl searchList = match searchList with
+    | Label(name)::tl when name = lbl -> tl
+    | _::tl                           -> findLabel lbl tl
+    | []                              -> raise (InstructionSimulationError ("Label '" ^ lbl ^ "' not found, cannot be jumped to"))
+
+let rec evaluateInstructionSet' currSet completeSet = match currSet with
+    | hd::tl -> let newTail = match hd with
+                              | Jump(lbl)                       -> findLabel lbl completeSet
+                              | JumpIfZero(lbl)                 -> if (getRegAcc ())  = 0 then findLabel lbl completeSet else tl
+                              | JumpIfNotZero(lbl)              -> if (getRegAcc ()) != 0 then findLabel lbl completeSet else tl
+                              | JumpIfGreaterThanZero(lbl)      -> if (getRegAcc ()) >  0 then findLabel lbl completeSet else tl
+                              | JumpIfGreaterOrEqualToZero(lbl) -> if (getRegAcc ()) >= 0 then findLabel lbl completeSet else tl
+                              | _                               -> tl
+                in
+                processInstruction hd;
+                evaluateInstructionSet' newTail completeSet
     | []     -> getRegAcc ()
     
-(* 3 specific registers + 10 generic registers *)
-let evaluateInstructionSet x = clearMemory (); evaluateInstructionSet' x
+let evaluateInstructionSet x = clearMemory (); evaluateInstructionSet' x x
