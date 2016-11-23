@@ -88,7 +88,7 @@ updateIdentifier iden exp = operation_toInstructions (expression_identifier_toIn
 and
 instructionList_of_parseTree x numRegisters = resetLabels (); clearSymbolTable (); resetStack (); resetRegisters (); setMaxRegisters numRegisters; match x with
     (* Lists are generated from the end-backwards, so we need to generate the list in reverse for the side-effects to happen in the right order *)
-    | ParseTree_Functions(funcList) -> List.rev (function_list_toInstructions funcList)
+    | ParseTree_Functions(funcList) -> (Jump ("main"))::(List.rev (function_list_toInstructions funcList))
     | ParseTree_Empty               -> []
 and
 function_list_toInstructions x  = match x with
@@ -215,12 +215,25 @@ expression_identifier_toInstructions (x : expression_identifier) = match x with
                                                                   | Identifier_Reference(name)   -> [LoadAddress(lookupSymbol name)]
                                                            )
     
-    | Statement_While(whileStat)                        -> []
+    | Statement_While(whileStat)                        -> while_statement_toInstructions whileStat
     | Statement_If(ifStat)                              -> if_statement_toInstructions ifStat
     
     | Expression_Identifier_Operation(op)               -> expression_identifier_operation_toInstructions op
     
     | _                                                 -> []
+and
+while_statement_toInstructions x = match x with
+    | While_Loop_While(exp, statList) -> let lblNum = string_of_int (getNextLabelNum ()) in
+                                         let condLbl = lblNum ^ "_while_cond" in
+                                         let startLbl = lblNum ^ "_while_start" in
+                                         let endLbl = lblNum ^ "_while_end" in
+                                         let condInstructions = expression_condition_bool_toInstructions exp startLbl in
+                                         [Label (endLbl); Jump (condLbl)]@(statement_list_toInstructions statList)@[Label (startLbl); Jump (endLbl)]@condInstructions@[Label (condLbl)]
+    | While_Loop_Do(statList, exp)    -> let lblNum = string_of_int (getNextLabelNum ()) in
+                                         let condLbl = lblNum ^ "_while_cond" in
+                                         let startLbl = lblNum ^ "_while_start" in
+                                         let condInstructions = expression_condition_bool_toInstructions exp startLbl in
+                                         condInstructions@(Label (condLbl))::(statement_list_toInstructions statList)@[Label (startLbl)]
 and
 if_statement_toInstructions x = match x with
     | If_Statement_If_Bool(exp, statList)                       -> let lblNum = string_of_int (getNextLabelNum ()) in
