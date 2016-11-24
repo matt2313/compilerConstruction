@@ -13,7 +13,7 @@ let getMemory x = match x with
     
 let ram = ref (Array.make 100 CorruptMemory)
 let numRegisters = 10
-let registers = ref (Array.make (numRegisters + 4) CorruptMemory)
+let registers = ref (Array.make (numRegisters + 3) CorruptMemory)
 let ramOffset = 0
 
 let instructionPointer = ref []

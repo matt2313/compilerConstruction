@@ -95,7 +95,7 @@ instructionList_of_parseTree x numRegisters = resetLabels (); clearSymbolTable (
 and
 function_list_toInstructions x  = match x with
     | Function_List_Def(funcDefinition)            -> let instructions = pushScope (); function_definition_toInstructions funcDefinition in
-                                                      popScope (); resetStack (); instructions    (* calculate instructions before popping *)
+                                                      resetStack (); popScope (); instructions    (* calculate instructions before popping *)
     | Function_List_List(funcDefinition, funcList) -> (function_list_toInstructions funcList)@(function_definition_toInstructions funcDefinition)
     (* Syntax makes this a nightmare to implement, since the label can end up after the let/new statement.
        So just use normal variable declarations for now *)
@@ -107,7 +107,8 @@ and
 new_statement_toInstructions x = []
 and
 function_definition_toInstructions x = match x with
-    | Function_Definition(iden, args, statements) -> [Return; MoveData(RegisterNum(1), RegisterAcc); PopStack (!stackOffset); MoveData(RegisterAcc, RegisterNum(1))]@(statement_list_toInstructions statements)@[Label(nameOfFunction x)]
+    | Function_Definition(iden, args, statements) -> let instructions = statement_list_toInstructions statements in
+                                                     [Return; PopFromStack(RegisterBasePtr); MoveData(RegisterNum(1), RegisterAcc); PopStack (!stackOffset); MoveData(RegisterAcc, RegisterNum(1))]@instructions@[MoveData(RegisterStackPtr, RegisterBasePtr); PushOnStack(RegisterBasePtr); Label(nameOfFunction x)]
 and
 statement_list_toInstructions x = match x with
     | Statement_List_Empty                -> []
