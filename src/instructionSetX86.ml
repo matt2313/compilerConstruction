@@ -34,6 +34,8 @@ type instructionX86 =
     | X86_JumpIfNotEqual of string
     | X86_JumpIfGreaterThan of string
     | X86_JumpIfGreaterOrEqual of string
+    | X86_Call of string
+    | X86_Return
     
 
 let isRegisterAddress x = match x with
@@ -77,8 +79,10 @@ let instructionX86_toString x = match x with
     | X86_JumpIfNotEqual(lbl)       -> "jne MC_" ^ lbl
     | X86_JumpIfGreaterThan(lbl)    -> "jnle MC_" ^ lbl
     | X86_JumpIfGreaterOrEqual(lbl) -> "jnl MC_" ^ lbl
+    | X86_Call(lbl)                 -> "call MC_" ^ lbl
+    | X86_Return                    -> "ret"
     
-    | X86_Label(lbl)                -> lbl ^ ":"
+    | X86_Label(lbl)                -> "MC_" ^ lbl ^ ":"
 
 let addressToX86 x = match x with
     | RegisterNum(n)    -> if 0 < n && n <= 13 then GeneralRegisterX86(n) else raise (X86GenerationError ("Cannot convert register num: " ^ (string_of_int n)))
@@ -113,12 +117,14 @@ let instructionToX86List x = match x with
     
     | MoveData(lhs, rhs) -> [X86_MoveValueOf((addressToX86 lhs), (addressToX86 rhs))]
     
-    | Label(lbl)                      -> [X86_Label("MC_" ^ lbl)]
+    | Label(lbl)                      -> [X86_Label(lbl)]
     | Jump(lbl)                       -> [X86_Jump(lbl)]
     | JumpIfZero(lbl)                 -> [X86_JumpIfEqual(lbl)]
     | JumpIfNotZero(lbl)              -> [X86_JumpIfNotEqual(lbl)]
     | JumpIfGreaterThanZero(lbl)      -> [X86_JumpIfGreaterThan(lbl)]
     | JumpIfGreaterOrEqualToZero(lbl) -> [X86_JumpIfGreaterOrEqual(lbl)]
+    | Call(lbl)                       -> [X86_Call(lbl)]
+    | Return                          -> [X86_Return]
     
     | BlankLine          -> []
 

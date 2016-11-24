@@ -13,8 +13,10 @@ let getMemory x = match x with
     
 let ram = ref (Array.make 100 CorruptMemory)
 let numRegisters = 10
-let registers = ref (Array.make (numRegisters + 3) CorruptMemory)
+let registers = ref (Array.make (numRegisters + 4) CorruptMemory)
 let ramOffset = 0
+
+let instructionPointer = ref []
 
 let getRam n = getMemory (!ram.(n - ramOffset))
 let setRam n x = !ram.(n - ramOffset) <- Memory(x)
@@ -27,6 +29,11 @@ let getRegStack () = getMemory (!registers.(2))
 let setRegStack x = !registers.(2) <- Memory(x)
 let getRegGeneric n = getMemory (!registers.(2 + n))
 let setRegGeneric n x = !registers.(2 + n) <- Memory(x)
+
+let getInstructionPointer () = match !instructionPointer with
+                                     | hd::tl -> instructionPointer := tl; hd
+                                     | []     -> raise (InstructionSimulationError "No instruction pointer found")
+let setInstructionPointer x = instructionPointer := x::!instructionPointer
 
 let clearMemory () = ram := (Array.make 100 CorruptMemory);
                      registers := (Array.make 13 CorruptMemory);
@@ -93,6 +100,8 @@ let processInstruction x = match x with
     | JumpIfGreaterThanZero(_)      
     | JumpIfGreaterOrEqualToZero(_) 
     | Label(_)                      
+    | Call(_)                    
+    | Return                     
     | BlankLine                  -> ()
     
 let rec findLabel lbl searchList = match searchList with
@@ -107,6 +116,8 @@ let rec evaluateInstructionSet' currSet completeSet = match currSet with
                               | JumpIfNotZero(lbl)              -> if (getRegAcc ()) != 0 then findLabel lbl completeSet else tl
                               | JumpIfGreaterThanZero(lbl)      -> if (getRegAcc ()) >  0 then findLabel lbl completeSet else tl
                               | JumpIfGreaterOrEqualToZero(lbl) -> if (getRegAcc ()) >= 0 then findLabel lbl completeSet else tl
+                              | Call(lbl)                       -> setInstructionPointer tl; findLabel lbl completeSet
+                              | Return                          -> getInstructionPointer ()
                               | _                               -> tl
                 in
                 processInstruction hd;

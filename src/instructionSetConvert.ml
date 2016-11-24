@@ -37,15 +37,7 @@ let rec lookupSymbol'' name lst = match lst with
                 )
     | []     -> NoAddress
 let rec lookupSymbol' name lst = match lst with
-    | hd::tl -> (let lookupResult = lookupSymbol'' name hd in
-                 match lookupResult with
-                       | RegisterNum(_)  
-                       | StackAddress(_) 
-                       | RegisterAcc        
-                       | RegisterStackPtr   
-                       | RegisterBasePtr    -> lookupResult
-                       | NoAddress          -> lookupSymbol' name tl
-                )
+    | hd::tl -> lookupSymbol'' name hd
     | []     -> NoAddress
 let lookupSymbol name = let result = lookupSymbol' name !symbolTable in
                         match result with
@@ -72,12 +64,22 @@ let popScope' lst = match lst with
     | []     -> raise (CodeGenerationError ("Tried to pop with no scope"))
 let popScope () = symbolTable := popScope' !symbolTable
 
+let symbol_toString x = match x with
+    | Symbol(name, addr) -> name ^ ":" ^ (address_toString addr)
+    | NoSymbol           -> "_"
+let rec symbolTable_toString' x = match x with
+    | hd::tl -> (symbol_toString hd) ^ "|" ^ (symbolTable_toString' tl)
+    | []     -> ""
+let rec symbolTable_toString x = match x with
+    | hd::tl -> (symbolTable_toString' hd) ^ "\n" ^ (symbolTable_toString tl)
+    | []     -> ""
+let printSymbolTable () = print_endline (symbolTable_toString !symbolTable)
+
 
 
 let rec declareIdentifier iden exp = match iden with
     | Identifier_Declaration(_, name) -> let (instructions, addr) = getNextStackAddress () in
-                                         addSymbol (Symbol(name, addr));
-                                         (MoveData(RegisterAcc, addr))::(expression_toInstructions exp)@instructions
+                                         addSymbol (Symbol(name, addr)); (MoveData(RegisterAcc, addr))::(expression_toInstructions exp)@instructions
     | Identifier_Reference(_)         -> raise (CodeGenerationError ("Tried to declare from identifier reference"))
 and
 findItentifier iden = match iden with
@@ -88,12 +90,13 @@ updateIdentifier iden exp = operation_toInstructions (expression_identifier_toIn
 and
 instructionList_of_parseTree x numRegisters = resetLabels (); clearSymbolTable (); resetStack (); resetRegisters (); setMaxRegisters numRegisters; match x with
     (* Lists are generated from the end-backwards, so we need to generate the list in reverse for the side-effects to happen in the right order *)
-    | ParseTree_Functions(funcList) -> (Jump ("main"))::(List.rev (function_list_toInstructions funcList))
+    | ParseTree_Functions(funcList) -> [Call ("main"); Jump ("end")]@(List.rev (function_list_toInstructions funcList))@[Label ("end")]
     | ParseTree_Empty               -> []
 and
 function_list_toInstructions x  = match x with
-    | Function_List_Def(funcDefinition)            -> function_definition_toInstructions funcDefinition
-    | Function_List_List(funcDefinition, funcList) -> (function_definition_toInstructions funcDefinition)@(function_list_toInstructions funcList)
+    | Function_List_Def(funcDefinition)            -> let instructions = pushScope (); function_definition_toInstructions funcDefinition in
+                                                      popScope (); resetStack (); instructions    (* calculate instructions before popping *)
+    | Function_List_List(funcDefinition, funcList) -> (function_list_toInstructions funcList)@(function_definition_toInstructions funcDefinition)
     (* Syntax makes this a nightmare to implement, since the label can end up after the let/new statement.
        So just use normal variable declarations for now *)
     | Function_List_Let(_, funcList)               
@@ -104,7 +107,7 @@ and
 new_statement_toInstructions x = []
 and
 function_definition_toInstructions x = match x with
-    | Function_Definition(iden, args, statements) -> (statement_list_toInstructions statements)@[Label(nameOfFunction x)]
+    | Function_Definition(iden, args, statements) -> [Return; MoveData(RegisterNum(1), RegisterAcc); PopStack (!stackOffset); MoveData(RegisterAcc, RegisterNum(1))]@(statement_list_toInstructions statements)@[Label(nameOfFunction x)]
 and
 statement_list_toInstructions x = match x with
     | Statement_List_Empty                -> []
@@ -209,7 +212,10 @@ expression_identifier_toInstructions (x : expression_identifier) = match x with
     | Expression_Identifier_Assign(iden, exp)           -> updateIdentifier iden (Expression_Identifier(exp))
     
     | Expression_Identifier_Dereference(iden)           -> [findItentifier iden]
-    | Expression_Identifier_Function_Call(iden, params) -> []
+    | Expression_Identifier_Function_Call(iden, params) -> (match iden with
+                                                                  | Identifier_Reference(name) -> [Call (name)]
+                                                                  | _                          -> raise (CodeGenerationError ("Cannot call function definition"))
+                                                           )
     | Expression_Identifier_Variable_Ref(iden)          -> (match iden with
                                                                   | Identifier_Declaration(_, _) -> raise (CodeGenerationError ("Tried to reference identifier declaration"))
                                                                   | Identifier_Reference(name)   -> [LoadAddress(lookupSymbol name)]

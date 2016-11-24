@@ -31,6 +31,8 @@ type instruction =
     | JumpIfNotZero of string
     | JumpIfGreaterThanZero of string
     | JumpIfGreaterOrEqualToZero of string
+    | Call of string                 (* Execute function with given label *)
+    | Return                         (* Return from function *)
     | Label of string                (* Label used for jumping *)
     
     | BlankLine                      (* This isn't an instruction, it's used to render the output nicely *)
@@ -69,5 +71,7 @@ let instruction_toString x = match x with
     | JumpIfNotZero(lbl)              -> "jmpnz '" ^ lbl ^ "'"
     | JumpIfGreaterThanZero(lbl)      -> "jmpgz '" ^ lbl ^ "'"
     | JumpIfGreaterOrEqualToZero(lbl) -> "jmpgez '" ^ lbl ^ "'"
+    | Call(lbl)                       -> "call '" ^ lbl ^ "'"
+    | Return                          -> "ret"
     | Label(name)                     -> name ^ ":"
     | BlankLine                       -> ""

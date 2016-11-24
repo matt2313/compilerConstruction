@@ -18,16 +18,16 @@ int main()
     while(!j > 0);
     
     int k := 0;
+    int l := 0;
     while(!k < 2)
     {
-        int l := 0;
+        l := 0;
         do
         {
             x := !x + 1;
             l := !l + 1;
         }
         while(!l < 2);
-        
         k := !k + 1;
     };
     
