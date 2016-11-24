@@ -18,6 +18,11 @@ let resetRegisters () = currRegister := 0
 let resetStack () = stackOffset := 0
 let setMaxRegisters n = maxRegister := n
 
+(* Code for generating labels *)
+let labelNum = ref 0
+let resetLabels () = labelNum := 0
+let getNextLabelNum () = labelNum := !labelNum + 1; !labelNum
+
 (* Code for managing symbol table *)
 type symbol =
     | Symbol of string * address
@@ -32,15 +37,7 @@ let rec lookupSymbol'' name lst = match lst with
                 )
     | []     -> NoAddress
 let rec lookupSymbol' name lst = match lst with
-    | hd::tl -> (let lookupResult = lookupSymbol'' name hd in
-                 match lookupResult with
-                       | RegisterNum(_)  
-                       | StackAddress(_) 
-                       | RegisterAcc        
-                       | RegisterStackPtr   
-                       | RegisterBasePtr    -> lookupResult
-                       | NoAddress          -> lookupSymbol' name tl
-                )
+    | hd::tl -> lookupSymbol'' name hd
     | []     -> NoAddress
 let lookupSymbol name = let result = lookupSymbol' name !symbolTable in
                         match result with
@@ -67,12 +64,22 @@ let popScope' lst = match lst with
     | []     -> raise (CodeGenerationError ("Tried to pop with no scope"))
 let popScope () = symbolTable := popScope' !symbolTable
 
+let symbol_toString x = match x with
+    | Symbol(name, addr) -> name ^ ":" ^ (address_toString addr)
+    | NoSymbol           -> "_"
+let rec symbolTable_toString' x = match x with
+    | hd::tl -> (symbol_toString hd) ^ "|" ^ (symbolTable_toString' tl)
+    | []     -> ""
+let rec symbolTable_toString x = match x with
+    | hd::tl -> (symbolTable_toString' hd) ^ "\n" ^ (symbolTable_toString tl)
+    | []     -> ""
+let printSymbolTable () = print_endline (symbolTable_toString !symbolTable)
+
 
 
 let rec declareIdentifier iden exp = match iden with
     | Identifier_Declaration(_, name) -> let (instructions, addr) = getNextStackAddress () in
-                                         addSymbol (Symbol(name, addr));
-                                         (MoveData(RegisterAcc, addr))::(expression_toInstructions exp)@instructions
+                                         addSymbol (Symbol(name, addr)); (MoveData(RegisterAcc, addr))::(expression_toInstructions exp)@instructions
     | Identifier_Reference(_)         -> raise (CodeGenerationError ("Tried to declare from identifier reference"))
 and
 findItentifier iden = match iden with
@@ -81,26 +88,40 @@ findItentifier iden = match iden with
 and
 updateIdentifier iden exp = operation_toInstructions (expression_identifier_toInstructions iden) (expression_toInstructions exp) (fun (x, y) -> [StoreValueIn(x); MoveData(y, RegisterAcc)])
 and
-instructionList_of_parseTree x numRegisters = clearSymbolTable (); resetStack (); resetRegisters (); setMaxRegisters numRegisters; match x with
+instructionList_of_parseTree x numRegisters = resetLabels (); clearSymbolTable (); resetStack (); resetRegisters (); setMaxRegisters numRegisters; match x with
     (* Lists are generated from the end-backwards, so we need to generate the list in reverse for the side-effects to happen in the right order *)
-    | ParseTree_Functions(funcList) -> List.rev (function_list_toInstructions funcList)
+    | ParseTree_Functions(funcList) -> (List.rev (pushGeneralRegisters))@[Call ("main"); Jump ("end")]@(List.rev (function_list_toInstructions funcList))@[Label ("end")]
     | ParseTree_Empty               -> []
 and
 function_list_toInstructions x  = match x with
-    | Function_List_Def(funcDefinition)            -> function_definition_toInstructions funcDefinition
-    | Function_List_List(funcDefinition, funcList) -> (function_definition_toInstructions funcDefinition)@(function_list_toInstructions funcList)
+    | Function_List_Def(funcDefinition)            -> let instructions = pushScope (); function_definition_toInstructions funcDefinition in
+                                                      resetStack (); popScope (); instructions    (* calculate instructions before popping *)
+    | Function_List_List(funcDefinition, funcList) -> (function_list_toInstructions funcList)@(function_definition_toInstructions funcDefinition)
     (* Syntax makes this a nightmare to implement, since the label can end up after the let/new statement.
        So just use normal variable declarations for now *)
     | Function_List_Let(_, funcList)               
     | Function_List_New(_, funcList)               -> function_list_toInstructions funcList
 and
-
 let_statement_toInstructions x = []
 and
 new_statement_toInstructions x = []
 and
+pushGeneralRegisters =
+(*
+    [PushOnStack(RegisterNum(1)); PushOnStack(RegisterNum(2)); PushOnStack(RegisterNum(3)); PushOnStack(RegisterNum(4)); PushOnStack(RegisterNum(5)); PushOnStack(RegisterNum(6)); PushOnStack(RegisterNum(7)); PushOnStack(RegisterNum(8)); PushOnStack(RegisterNum(9)); PushOnStack(RegisterNum(10))]
+*)
+    []
+and
+popGeneralRegisters =
+(*
+    [PopFromStack(RegisterNum(10)); PopFromStack(RegisterNum(9)); PopFromStack(RegisterNum(8)); PopFromStack(RegisterNum(7)); PopFromStack(RegisterNum(6)); PopFromStack(RegisterNum(5)); PopFromStack(RegisterNum(4)); PopFromStack(RegisterNum(3)); PopFromStack(RegisterNum(2)); PopFromStack(RegisterNum(1))]
+*)
+    []
+and
 function_definition_toInstructions x = match x with
-    | Function_Definition(iden, args, statements) -> (statement_list_toInstructions statements)@[Label(nameOfFunction x)]
+    | Function_Definition(iden, args, statements) -> let instructions = addArgsToSymbolTable args; statement_list_toInstructions statements in
+                                                     (Return)::popGeneralRegisters@(PopFromStack(RegisterBasePtr))::(popArgs args)@[MoveData(RegisterNum(1), RegisterAcc); PopStack (!stackOffset)]@
+                                                     (MoveData(RegisterAcc, RegisterNum(1)))::instructions@[MoveData(RegisterStackPtr, RegisterBasePtr); PushOnStack(RegisterBasePtr); Label(nameOfFunction x)]
 and
 statement_list_toInstructions x = match x with
     | Statement_List_Empty                -> []
@@ -121,7 +142,7 @@ resetRegisters ();
 and
 expression_toInstructions x = match x with
     | Expression_Int(exp)        -> expression_int_toInstructions exp
-    | Expression_Bool(exp)       -> expression_bool_toInstructions exp
+    | Expression_Bool(exp)       -> []
     | Expression_Identifier(exp) -> expression_identifier_toInstructions exp
     | _                          -> []
 and
@@ -160,26 +181,138 @@ expression_int_operation_toInstructions x = match x with
     
     | _                                           -> []
 and
-expression_bool_toInstructions x = match x with
-    | _ -> []
+expression_condition_bool_toInstructions x lbl = match x with
+    | Expression_Bool_Literal(bVal)      -> if bVal then [Jump (lbl)] else []
+    | Expression_Bool_Operation(op)      -> (match op with
+                                                | Operation_Int_Less_Than_Int(lhs, rhs)                 -> (JumpIfGreaterThanZero lbl)::(expression_int_operation_toInstructions (Operation_Int_Minus_Int (rhs, lhs)))
+                                                | Operation_Int_Greater_Than_Int(lhs, rhs)              -> (JumpIfGreaterThanZero lbl)::(expression_int_operation_toInstructions (Operation_Int_Minus_Int (lhs, rhs)))
+                                                | Operation_Int_Less_Than_Or_Eq_Int(lhs, rhs)           -> (JumpIfGreaterOrEqualToZero lbl)::(expression_int_operation_toInstructions (Operation_Int_Minus_Int (rhs, lhs)))
+                                                | Operation_Int_Greater_Than_Or_Eq_Int(lhs, rhs)        -> (JumpIfGreaterOrEqualToZero lbl)::(expression_int_operation_toInstructions (Operation_Int_Minus_Int (lhs, rhs)))
+                                                | Operation_Int_Eq_Int(lhs, rhs)                        -> (JumpIfZero lbl)::(expression_int_operation_toInstructions (Operation_Int_Minus_Int (lhs, rhs)))
+                                                | Operation_Int_Not_Eq_Int(lhs, rhs)                    -> (JumpIfNotZero lbl)::(expression_int_operation_toInstructions (Operation_Int_Minus_Int (lhs, rhs)))
+                                                
+                                                | Operation_Int_Less_Than_Identifier(lhs, rhs)          -> (JumpIfGreaterThanZero lbl)::(expression_int_operation_toInstructions (Operation_Identifier_Minus_Int (rhs, lhs)))
+                                                | Operation_Int_Greater_Than_Identifier(lhs, rhs)       -> (JumpIfGreaterThanZero lbl)::(expression_int_operation_toInstructions (Operation_Int_Minus_Identifier (lhs, rhs)))
+                                                | Operation_Int_Less_Than_Or_Eq_Identifier(lhs, rhs)    -> (JumpIfGreaterOrEqualToZero lbl)::(expression_int_operation_toInstructions (Operation_Identifier_Minus_Int (rhs, lhs)))
+                                                | Operation_Int_Greater_Than_Or_Eq_Identifier(lhs, rhs) -> (JumpIfGreaterOrEqualToZero lbl)::(expression_int_operation_toInstructions (Operation_Int_Minus_Identifier (lhs, rhs)))
+                                                | Operation_Int_Eq_Identifier(lhs, rhs)                 -> (JumpIfZero lbl)::(expression_int_operation_toInstructions (Operation_Int_Minus_Identifier (lhs, rhs)))
+                                                | Operation_Int_Not_Eq_Identifier(lhs, rhs)             -> (JumpIfNotZero lbl)::(expression_int_operation_toInstructions (Operation_Int_Minus_Identifier (lhs, rhs)))
+                                                
+                                                | Operation_Identifier_Less_Than_Int(lhs, rhs)          -> (JumpIfGreaterThanZero lbl)::(expression_int_operation_toInstructions (Operation_Int_Minus_Identifier (rhs, lhs)))
+                                                | Operation_Identifier_Greater_Than_Int(lhs, rhs)       -> (JumpIfGreaterThanZero lbl)::(expression_int_operation_toInstructions (Operation_Identifier_Minus_Int (lhs, rhs)))
+                                                | Operation_Identifier_Less_Than_Or_Eq_Int(lhs, rhs)    -> (JumpIfGreaterOrEqualToZero lbl)::(expression_int_operation_toInstructions (Operation_Int_Minus_Identifier (rhs, lhs)))
+                                                | Operation_Identifier_Greater_Than_Or_Eq_Int(lhs, rhs) -> (JumpIfGreaterOrEqualToZero lbl)::(expression_int_operation_toInstructions (Operation_Identifier_Minus_Int (lhs, rhs)))
+                                                | Operation_Identifier_Eq_Int(lhs, rhs)                 -> (JumpIfZero lbl)::(expression_int_operation_toInstructions (Operation_Identifier_Minus_Int (lhs, rhs)))
+                                                | Operation_Identifier_Not_Eq_Int(lhs, rhs)             -> (JumpIfNotZero lbl)::(expression_int_operation_toInstructions (Operation_Identifier_Minus_Int (lhs, rhs)))
+                                                
+                                                | _                                                     -> []
+                                            )
+    | _                                  -> []
+and
+expression_condition_identifier_toInstructions x lbl = match x with
+    | Expression_Identifier_Operation(op) -> (match op with
+                                                    | Operation_Identifier_Less_Than_Identifier(lhs, rhs)          -> (JumpIfGreaterThanZero lbl)::(expression_identifier_operation_toInstructions (Operation_Identifier_Minus_Identifier (rhs, lhs)))
+                                                    | Operation_Identifier_Greater_Than_Identifier(lhs, rhs)       -> (JumpIfGreaterThanZero lbl)::(expression_identifier_operation_toInstructions (Operation_Identifier_Minus_Identifier (lhs, rhs)))
+                                                    | Operation_Identifier_Less_Than_Or_Eq_Identifier(lhs, rhs)    -> (JumpIfGreaterOrEqualToZero lbl)::(expression_identifier_operation_toInstructions (Operation_Identifier_Minus_Identifier (rhs, lhs)))
+                                                    | Operation_Identifier_Greater_Than_Or_Eq_Identifier(lhs, rhs) -> (JumpIfGreaterOrEqualToZero lbl)::(expression_identifier_operation_toInstructions (Operation_Identifier_Minus_Identifier (lhs, rhs)))
+                                                    | Operation_Identifier_Eq_Identifier(lhs, rhs)                 -> (JumpIfZero lbl)::(expression_identifier_operation_toInstructions (Operation_Identifier_Minus_Identifier (lhs, rhs)))
+                                                    | Operation_Identifier_Not_Eq_Identifier(lhs, rhs)             -> (JumpIfNotZero lbl)::(expression_identifier_operation_toInstructions (Operation_Identifier_Minus_Identifier (lhs, rhs)))
+                                                    | _                                                            -> []
+                                             )
+    | _                                   -> []
+and
+pushParams x = match x with
+    | Parameter_List_Element(exp)       -> (PushOnStack (RegisterAcc))::(expression_toInstructions exp)
+    | Parameter_List_List(exp, params)  -> (pushParams params)@(PushOnStack (RegisterAcc))::(expression_toInstructions exp)
+    | Parameter_List_Empty              -> []
+and
+popArgs x = [PopStack(numArgs x)]
+and
+numArgs x = match x with
+    | Argument_List_Element(_)    -> 1
+    | Argument_List_List(_, args) -> 1 + (numArgs args)
+    | Argument_List_Empty         -> 0
+and
+addArgsToSymbolTable x = addArgsToSymbolTable' x (-(numArgs x) + 1)
+and
+addArgsToSymbolTable' x n = match x with
+    | Argument_List_Element(iden)    -> (match iden with
+                                        | Identifier_Declaration(_, name) -> addSymbol (Symbol(name, StackAddress(n)))
+                                        | Identifier_Reference(_)         -> raise (CodeGenerationError "Cannot reference identifier in argument")
+                                        )
+    | Argument_List_List(iden, args) -> (match iden with
+                                        | Identifier_Declaration(_, name) -> addSymbol (Symbol(name, StackAddress(n))); addArgsToSymbolTable' args (n + 1)
+                                        | Identifier_Reference(_)         -> raise (CodeGenerationError "Cannot reference identifier in argument")
+                                        )
+    | Argument_List_Empty            -> ()
 and
 expression_identifier_toInstructions (x : expression_identifier) = match x with
     | Expression_Identifier_Declare_Int(iden, exp)      -> declareIdentifier iden (Expression_Identifier(exp))
     | Expression_Identifier_Assign(iden, exp)           -> updateIdentifier iden (Expression_Identifier(exp))
     
     | Expression_Identifier_Dereference(iden)           -> [findItentifier iden]
-    | Expression_Identifier_Function_Call(iden, params) -> []
+    | Expression_Identifier_Function_Call(iden, params) -> (match iden with
+                                                                  | Identifier_Reference(name) -> (Call (name))::(pushParams params)@pushGeneralRegisters
+                                                                  | _                          -> raise (CodeGenerationError ("Cannot call function definition"))
+                                                           )
     | Expression_Identifier_Variable_Ref(iden)          -> (match iden with
                                                                   | Identifier_Declaration(_, _) -> raise (CodeGenerationError ("Tried to reference identifier declaration"))
                                                                   | Identifier_Reference(name)   -> [LoadAddress(lookupSymbol name)]
                                                            )
     
-    | Statement_While(whileStat)                        -> []
-    | Statement_If(ifStat)                              -> []
+    | Statement_While(whileStat)                        -> while_statement_toInstructions whileStat
+    | Statement_If(ifStat)                              -> if_statement_toInstructions ifStat
     
     | Expression_Identifier_Operation(op)               -> expression_identifier_operation_toInstructions op
     
     | _                                                 -> []
+and
+while_statement_toInstructions x = match x with
+    | While_Loop_While(exp, statList) -> let lblNum = string_of_int (getNextLabelNum ()) in
+                                         let condLbl = lblNum ^ "_while_cond" in
+                                         let startLbl = lblNum ^ "_while_start" in
+                                         let endLbl = lblNum ^ "_while_end" in
+                                         let condInstructions = expression_condition_bool_toInstructions exp startLbl in
+                                         [Label (endLbl); Jump (condLbl)]@(statement_list_toInstructions statList)@[Label (startLbl); Jump (endLbl)]@condInstructions@[Label (condLbl)]
+    | While_Loop_Do(statList, exp)    -> let lblNum = string_of_int (getNextLabelNum ()) in
+                                         let condLbl = lblNum ^ "_while_cond" in
+                                         let startLbl = lblNum ^ "_while_start" in
+                                         let condInstructions = expression_condition_bool_toInstructions exp startLbl in
+                                         condInstructions@(Label (condLbl))::(statement_list_toInstructions statList)@[Label (startLbl)]
+and
+if_statement_toInstructions x = match x with
+    | If_Statement_If_Bool(exp, statList)                       -> let lblNum = string_of_int (getNextLabelNum ()) in
+                                                                   let trueLbl = lblNum ^ "_if_true" in
+                                                                   let endLbl = lblNum ^ "_if_end" in
+                                                                   (Label (endLbl))::(statement_list_toInstructions statList)@[Label (trueLbl); Jump (endLbl)]@(expression_condition_bool_toInstructions exp trueLbl)
+    | If_Statement_Else_Bool(exp, statList, statListElse)       -> let lblNum = string_of_int (getNextLabelNum ()) in
+                                                                   let trueLbl = lblNum ^ "_if_true" in
+                                                                   let falseLbl = lblNum ^ "_if_false" in
+                                                                   let endLbl = lblNum ^ "_if_end" in
+                                                                    (Label (endLbl))::(statement_list_toInstructions statListElse)@[Label (falseLbl); Jump (endLbl)]
+                                                                   @(statement_list_toInstructions statList)@[Label (trueLbl); Jump (falseLbl)]@(expression_condition_bool_toInstructions exp trueLbl)
+    | If_Statement_Else_List_Bool(exp, statList, ifStat)        -> let lblNum = string_of_int (getNextLabelNum ()) in
+                                                                   let trueLbl = lblNum ^ "_if_true" in
+                                                                   let falseLbl = lblNum ^ "_if_false" in
+                                                                   let endLbl = lblNum ^ "_if_end" in
+                                                                    (Label (endLbl))::(if_statement_toInstructions ifStat)@[Label (falseLbl); Jump (endLbl)]
+                                                                   @(statement_list_toInstructions statList)@[Label (trueLbl); Jump (falseLbl)]@(expression_condition_bool_toInstructions exp trueLbl)
+    | If_Statement_If_Identifier(exp, statList)                 -> let lblNum = string_of_int (getNextLabelNum ()) in
+                                                                   let trueLbl = lblNum ^ "_if_true" in
+                                                                   let endLbl = lblNum ^ "_if_end" in
+                                                                   (Label (endLbl))::(statement_list_toInstructions statList)@[Label (trueLbl); Jump (endLbl)]@(expression_condition_identifier_toInstructions exp trueLbl)
+    | If_Statement_Else_Identifier(exp, statList, statListElse) -> let lblNum = string_of_int (getNextLabelNum ()) in
+                                                                   let trueLbl = lblNum ^ "_if_true" in
+                                                                   let falseLbl = lblNum ^ "_if_false" in
+                                                                   let endLbl = lblNum ^ "_if_end" in
+                                                                    (Label (endLbl))::(statement_list_toInstructions statListElse)@[Label (falseLbl); Jump (endLbl)]
+                                                                   @(statement_list_toInstructions statList)@[Label (trueLbl); Jump (falseLbl)]@(expression_condition_identifier_toInstructions exp trueLbl)
+    | If_Statement_Else_List_Identifier(exp, statList, ifStat)  -> let lblNum = string_of_int (getNextLabelNum ()) in
+                                                                   let trueLbl = lblNum ^ "_if_true" in
+                                                                   let falseLbl = lblNum ^ "_if_false" in
+                                                                   let endLbl = lblNum ^ "_if_end" in
+                                                                    (Label (endLbl))::(if_statement_toInstructions ifStat)@[Label (falseLbl); Jump (endLbl)]
+                                                                   @(statement_list_toInstructions statList)@[Label (trueLbl); Jump (falseLbl)]@(expression_condition_identifier_toInstructions exp trueLbl)
 and
 expression_identifier_operation_toInstructions x = match x with
     | Operation_Identifier_Plus_Identifier(lhs, rhs)     -> operation_toInstructions (expression_identifier_toInstructions lhs) (expression_identifier_toInstructions rhs) (fun (x, y) -> [Add(x, y)])
@@ -188,10 +321,10 @@ expression_identifier_operation_toInstructions x = match x with
     | Operation_Identifier_Divide_Identifier(lhs, rhs)   -> operation_toInstructions (expression_identifier_toInstructions lhs) (expression_identifier_toInstructions rhs) (fun (x, y) -> [Divide(x, y)])
     | Operation_Negate_Identifier(exp)                   -> expression_int_operation_toInstructions (Operation_Int_Minus_Identifier(Expression_Int_Literal(0), exp))
     
-    | _ -> []
+    | _                                                  -> []
 and
 return_statement_toInstructions x = match x with
     | Return_Int(exp)        -> expression_int_toInstructions exp
-    | Return_Bool(exp)       -> expression_bool_toInstructions exp
+    | Return_Bool(exp)       -> []
     | Return_Identifier(exp) -> expression_identifier_toInstructions exp
     | _                      -> []
