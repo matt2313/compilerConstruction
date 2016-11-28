@@ -61,9 +61,9 @@ let getPosition lexbuf =
 let parseWithErrors filename lexbuf =
     try Mattc_par.start Mattc_lex.read lexbuf with
     | SyntaxError message     -> prerr_string("Syntax error (" ^ message ^ ") in '" ^ filename ^ "' at " ^ getPosition lexbuf);
-                                 exit (-1)
+                                 exit (1)
     | Parsing.Parse_error     -> prerr_string("Parse error in '" ^ filename ^ "' at " ^ getPosition lexbuf);
-                                 exit (-1)
+                                 exit (2)
 
 let parseWithoutErrors = Mattc_par.start Mattc_lex.read
 
@@ -80,7 +80,7 @@ let printFileResult x filename =
                        ) in (checkAgainstExpected eval.evaluation; print_endline ("File '" ^ filename ^ "' parsed correctly with value: " ^ (valueToString eval.evaluation)))
             with
         | EvaluationError message -> prerr_string("Evaluation error in '" ^ filename ^ "' (" ^ message ^ ")");
-                                     exit(-1)
+                                     exit(3)
     else
         print_endline ("File '" ^ filename ^ "' parsed correctly.")
 

@@ -10,23 +10,23 @@ TestsFailed=0
 # 2nd parameter is the name of the test (used for output)
 function runSimpleTestCase
 {
-    $1 > /dev/null
     let "TestsCompleted += 1"
+    $1 > /dev/null
     if [ $? = 0 ];
         then
             let "TestsPassed += 1"
             printf "$2: PASS\n"
         else
             let "TestsFailed += 1"
-            printf "\n$2: FAIL\n"
+            printf "\n$2: FALSE POSITIVE\n"
     fi
 }
 
 # Like runSimpleTestCase but treats a failure as a pass and vice-versa
 function runSimpleTestCaseInverted
 {
-    $1 > /dev/null
     let "TestsCompleted += 1"
+    $1 > /dev/null 2>&1
     if [ $? = 0 ];
         then
             let "TestsFailed += 1"
