@@ -6,7 +6,7 @@
 # 2nd parameter is the name of the test (used for output)
 function runSimpleTestCase
 {
-    "$1" > /dev/null
+    $1 > /dev/null
     if [ $? = 0 ];
         then
             printf "$2: PASS\n"
