@@ -11,5 +11,5 @@ float pi()
 let float final := two() * pi() in
 float main()
 {
-    return final; // 6.283185306
+    return !final; // 6.283185306
 }

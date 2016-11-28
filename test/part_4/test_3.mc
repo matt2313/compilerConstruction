@@ -9,5 +9,5 @@ int main()
         string s := "loop " ^ "number " ^ (!i as string) ^ " of " ^ (!max as string) ^ ". ";
     };
     
-    return out;
+    return !out;
 }

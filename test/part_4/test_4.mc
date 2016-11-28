@@ -1,4 +1,4 @@
-int main()
+float main()
 {
     return (if(5 > 10)
     {
