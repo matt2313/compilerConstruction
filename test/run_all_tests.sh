@@ -1,17 +1,39 @@
 #!/bin/bash
 # This script runs regression tests for the MattC compiler
 
+TestsCompleted=0
+TestsPassed=0
+TestsFailed=0
+
 # Checks if a given program returns 0
 # 1st parameter is the program to test
 # 2nd parameter is the name of the test (used for output)
 function runSimpleTestCase
 {
     $1 > /dev/null
+    let "TestsCompleted += 1"
     if [ $? = 0 ];
         then
+            let "TestsPassed += 1"
             printf "$2: PASS\n"
         else
+            let "TestsFailed += 1"
             printf "\n$2: FAIL\n"
+    fi
+}
+
+# Like runSimpleTestCase but treats a failure as a pass and vice-versa
+function runSimpleTestCaseInverted
+{
+    $1 > /dev/null
+    let "TestsCompleted += 1"
+    if [ $? = 0 ];
+        then
+            let "TestsFailed += 1"
+            printf "\n$2: FAIL\n"
+        else
+            let "TestsPassed += 1"
+            printf "$2: PASS\n"
     fi
 }
 
@@ -28,13 +50,19 @@ runSimpleTestCase "../bin/mattc part_1/letNew.mc"              "part_1/letNew   
 runSimpleTestCase "../bin/mattc part_1/bisection_recursive.mc" "part_1/bisection_recursive"
 runSimpleTestCase "../bin/mattc part_1/bisection_iterative.mc" "part_1/bisection_iterative"
 printf "\n"
+runSimpleTestCaseInverted "../bin/mattc -e part_1/test_fail_1.mc" "part_1/test_fail_1"
+runSimpleTestCaseInverted "../bin/mattc -e part_1/test_fail_2.mc" "part_1/test_fail_2"
+runSimpleTestCaseInverted "../bin/mattc -e part_1/test_fail_3.mc" "part_1/test_fail_3"
+runSimpleTestCaseInverted "../bin/mattc -e part_1/test_fail_4.mc" "part_1/test_fail_4"
+runSimpleTestCaseInverted "../bin/mattc -e -exp Int(100) part_1/test_fail_5.mc" "part_1/test_fail_5"
+printf "\n"
 runSimpleTestCase "../bin/mattc -e -o -exp Int(111) part_2/test_1.mc" "part_2/test_1   "
 runSimpleTestCase "../bin/mattc -e -o -exp Float(11.1) part_2/test_2.mc" "part_2/test_2   "
 runSimpleTestCase "../bin/mattc -e -o -exp Bool(false) part_2/test_3.mc" "part_2/test_3   "
 runSimpleTestCase "../bin/mattc -e -o -exp String(hello_world!) part_2/test_4.mc" "part_2/test_4   "
 runSimpleTestCase "../bin/mattc -e -o -exp Float(125.) -i part_2/test_5.data part_2/test_5.mc" "part_2/test_5   "
 runSimpleTestCase "../bin/mattc -e -o -exp Int(10) part_2/test_6.mc" "part_2/test_6   "
-runSimpleTestCase "../bin/mattc -e -o -exp String(10_8_6_4_2_0) part_2/test_7.mc" "part_2/test_7   "
+runSimpleTestCase "../bin/mattc -e -o -exp String(10_8_6_4_2_0_) part_2/test_7.mc" "part_2/test_7   "
 runSimpleTestCase "../bin/mattc -e -o part_2/test_8.mc" "part_2/test_8   "
 runSimpleTestCase "../bin/mattc -e -o -exp String(hello_world!) -i part_2/test_9.data part_2/test_9.mc" "part_2/test_9   "
 runSimpleTestCase "../bin/mattc -e -o -exp Int(2565) part_2/test_10.mc" "part_2/test_10  "
@@ -97,3 +125,6 @@ runSimpleTestCase "part_8/test_class"     "part_8/test_class"
 runSimpleTestCase "part_8/test_conv_opt"  "part_8/test_conv_opt "
 runSimpleTestCase "part_8/test_class_opt" "part_8/test_class_opt"
 printf "\n"
+printf "Tests Completed: $TestsCompleted\n"
+printf "Tests Passed:    $TestsPassed\n"
+printf "Tests Failed:    $TestsFailed\n"
