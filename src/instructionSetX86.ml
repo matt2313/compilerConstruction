@@ -79,7 +79,7 @@ let instructionX86_toString x = match x with
     | X86_JumpIfNotEqual(lbl)       -> "jne MC_" ^ lbl
     | X86_JumpIfGreaterThan(lbl)    -> "jnle MC_" ^ lbl
     | X86_JumpIfGreaterOrEqual(lbl) -> "jnl MC_" ^ lbl
-    | X86_Call(lbl)                 -> "call MC_" ^ lbl
+    | X86_Call(lbl)                 -> "callq MC_" ^ lbl
     | X86_Return                    -> "ret"
     
     | X86_Label(lbl)                -> "MC_" ^ lbl ^ ":"

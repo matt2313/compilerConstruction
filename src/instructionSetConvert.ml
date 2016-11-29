@@ -88,14 +88,14 @@ findItentifier iden = match iden with
 and
 updateIdentifier iden exp = operation_toInstructions (expression_identifier_toInstructions iden) (expression_toInstructions exp) (fun (x, y) -> [StoreValueIn(x); MoveData(y, RegisterAcc)])
 and
-instructionList_of_parseTree x numRegisters = resetLabels (); clearSymbolTable (); resetStack (); resetRegisters (); setMaxRegisters numRegisters; match x with
+instructionList_of_parseTree x numRegisters = resetLabels (); setMaxRegisters numRegisters; match x with
     (* Lists are generated from the end-backwards, so we need to generate the list in reverse for the side-effects to happen in the right order *)
-    | ParseTree_Functions(funcList) -> (List.rev (pushGeneralRegisters))@[Call ("main"); Jump ("end")]@(List.rev (function_list_toInstructions funcList))@[Label ("end")]
+    | ParseTree_Functions(funcList) -> [Call ("main"); Jump ("end")]@(List.rev (function_list_toInstructions funcList))@[Label ("end")]
     | ParseTree_Empty               -> []
 and
 function_list_toInstructions x  = match x with
-    | Function_List_Def(funcDefinition)            -> let instructions = pushScope (); function_definition_toInstructions funcDefinition in
-                                                      resetStack (); popScope (); instructions    (* calculate instructions before popping *)
+    | Function_List_Def(funcDefinition)            -> let instructions = (*pushScope ();*) function_definition_toInstructions funcDefinition in
+                                                      (*popScope ();*) instructions    (* calculate instructions before popping *)
     | Function_List_List(funcDefinition, funcList) -> (function_list_toInstructions funcList)@(function_definition_toInstructions funcDefinition)
     (* Syntax makes this a nightmare to implement, since the label can end up after the let/new statement.
        So just use normal variable declarations for now *)
@@ -118,10 +118,23 @@ popGeneralRegisters =
 *)
     []
 and
+pushArgs x = (pushArgs' x 1)@[PushStack (numArgs x)]
+and
+pushArgs' x n = match x with
+    | Argument_List_Element(iden)    -> (match iden with 
+                                            | Identifier_Declaration(_, name) -> [MoveData (RegisterNum(n), (lookupSymbol name))]
+                                            | Identifier_Reference(_)         -> raise (CodeGenerationError "Identifier reference in pushArgs")
+                                        )
+    | Argument_List_List(iden, args) -> (match iden with 
+                                            | Identifier_Declaration(_, name) -> (MoveData (RegisterNum(n), (lookupSymbol name)))::(pushArgs' args (n + 1))
+                                            | Identifier_Reference(_)         -> raise (CodeGenerationError "Identifier reference in pushArgs")
+                                        )
+    | Argument_List_Empty            -> []
+and
 function_definition_toInstructions x = match x with
-    | Function_Definition(iden, args, statements) -> let instructions = addArgsToSymbolTable args; statement_list_toInstructions statements in
-                                                     (Return)::popGeneralRegisters@(PopFromStack(RegisterBasePtr))::(popArgs args)@[MoveData(RegisterNum(1), RegisterAcc); PopStack (!stackOffset)]@
-                                                     (MoveData(RegisterAcc, RegisterNum(1)))::instructions@[MoveData(RegisterStackPtr, RegisterBasePtr); PushOnStack(RegisterBasePtr); Label(nameOfFunction x)]
+    | Function_Definition(iden, args, statements) -> let instructions = clearSymbolTable (); resetStack (); resetRegisters (); addArgsToSymbolTable args; statement_list_toInstructions statements in
+                                                     (Return)::popGeneralRegisters@[PopFromStack(RegisterBasePtr); MoveData (RegisterNum(1), RegisterAcc); PopStack (!stackOffset)]@
+                                                     (MoveData(RegisterAcc, RegisterNum(1)))::instructions@(pushArgs args)@[MoveData(RegisterStackPtr, RegisterBasePtr); PushOnStack(RegisterBasePtr)]@pushGeneralRegisters@[Label(nameOfFunction x)]
 and
 statement_list_toInstructions x = match x with
     | Statement_List_Empty                -> []
@@ -221,6 +234,8 @@ expression_condition_identifier_toInstructions x lbl = match x with
                                              )
     | _                                   -> []
 and
+
+(*
 pushParams x = match x with
     | Parameter_List_Element(exp)       -> (PushOnStack (RegisterAcc))::(expression_toInstructions exp)
     | Parameter_List_List(exp, params)  -> (pushParams params)@(PushOnStack (RegisterAcc))::(expression_toInstructions exp)
@@ -228,23 +243,32 @@ pushParams x = match x with
 and
 popArgs x = [PopStack(numArgs x)]
 and
+*)
+
 numArgs x = match x with
     | Argument_List_Element(_)    -> 1
     | Argument_List_List(_, args) -> 1 + (numArgs args)
     | Argument_List_Empty         -> 0
 and
-addArgsToSymbolTable x = addArgsToSymbolTable' x (-(numArgs x) + 1)
+addArgsToSymbolTable x = addArgsToSymbolTable' x 0
 and
 addArgsToSymbolTable' x n = match x with
     | Argument_List_Element(iden)    -> (match iden with
-                                        | Identifier_Declaration(_, name) -> addSymbol (Symbol(name, StackAddress(n)))
+                                        | Identifier_Declaration(_, name) -> addSymbol (Symbol(name, StackAddress(n))); stackOffset := !stackOffset + 1
                                         | Identifier_Reference(_)         -> raise (CodeGenerationError "Cannot reference identifier in argument")
                                         )
     | Argument_List_List(iden, args) -> (match iden with
-                                        | Identifier_Declaration(_, name) -> addSymbol (Symbol(name, StackAddress(n))); addArgsToSymbolTable' args (n + 1)
+                                        | Identifier_Declaration(_, name) -> addSymbol (Symbol(name, StackAddress(n))); stackOffset := !stackOffset + 1; addArgsToSymbolTable' args (n + 1)
                                         | Identifier_Reference(_)         -> raise (CodeGenerationError "Cannot reference identifier in argument")
                                         )
     | Argument_List_Empty            -> ()
+and
+storeParams x = storeParams' x 1
+and
+storeParams' x n = match x with
+    | Parameter_List_Element(exp)      -> (MoveData(RegisterAcc, RegisterNum(n)))::(expression_toInstructions exp)
+    | Parameter_List_List(exp, params) -> (MoveData(RegisterAcc, RegisterNum(n)))::(expression_toInstructions exp)@(storeParams' params (n + 1))
+    | Parameter_List_Empty             -> []
 and
 expression_identifier_toInstructions (x : expression_identifier) = match x with
     | Expression_Identifier_Declare_Int(iden, exp)      -> declareIdentifier iden (Expression_Identifier(exp))
@@ -252,7 +276,7 @@ expression_identifier_toInstructions (x : expression_identifier) = match x with
     
     | Expression_Identifier_Dereference(iden)           -> [findItentifier iden]
     | Expression_Identifier_Function_Call(iden, params) -> (match iden with
-                                                                  | Identifier_Reference(name) -> (Call (name))::(pushParams params)@pushGeneralRegisters
+                                                                  | Identifier_Reference(name) -> (Call (name))::(storeParams params)
                                                                   | _                          -> raise (CodeGenerationError ("Cannot call function definition"))
                                                            )
     | Expression_Identifier_Variable_Ref(iden)          -> (match iden with

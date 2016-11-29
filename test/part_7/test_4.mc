@@ -1,5 +1,66 @@
 int foo()
 {
+    return 50;
+}
+
+int bar()
+{
+    return 100;
+}
+
+int main()
+{
+    int x := foo();         // 50
+    int y := bar();
+    return !x + !y;
+}
+
+
+
+
+
+
+
+/*
+int foo()
+{
+    int x := 5;
+    return !x;
+}
+
+int bar()
+{
+    int i := 0;
+    
+    while(!i < 15)
+    {
+        i := !i + 1;
+    };
+    
+    return !i;
+}
+
+int main()
+{
+    int x := foo();
+    int y := 0;
+    y := bar();
+    return !x + !y;
+}
+*/
+
+
+
+
+
+
+
+
+
+
+/*
+int foo()
+{
     return 10;
 }
 
@@ -38,3 +99,4 @@ int main()
     
     return !x - 200;
 }
+*/

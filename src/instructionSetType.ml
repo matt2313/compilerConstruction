@@ -60,7 +60,7 @@ let instruction_toString x = match x with
     | MoveData(src, dest)   -> "mov  " ^ (address_toString src) ^ " " ^ (address_toString dest)
     
     | PushStack(iVal)       -> "pshs " ^ (string_of_int iVal)
-    | PushOnStack(addr)     -> "phsv " ^ (address_toString addr)
+    | PushOnStack(addr)     -> "pshv " ^ (address_toString addr)
     | PushRegisters         -> "pshr "
     | PopStack(iVal)        -> "pop  " ^ (string_of_int iVal)
     | PopFromStack(addr)    -> "popv " ^ (address_toString addr)
