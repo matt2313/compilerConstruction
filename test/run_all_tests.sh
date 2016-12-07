@@ -18,7 +18,7 @@ function runSimpleTestCase
             printf "$2: PASS\n"
         else
             let "TestsFailed += 1"
-            printf "\n$2: FALSE POSITIVE\n"
+            printf "\n$2: FAIL\n"
     fi
 }
 
@@ -30,10 +30,10 @@ function runSimpleTestCaseInverted
     if [ $? = 0 ];
         then
             let "TestsFailed += 1"
-            printf "\n$2: FAIL\n"
+            printf "\n$2: FAIL (FALSE POSITIVE)\n"
         else
             let "TestsPassed += 1"
-            printf "$2: PASS\n"
+            printf "$2: PASS (TRUE NEGATIVE)\n"
     fi
 }
 
