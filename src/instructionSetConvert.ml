@@ -220,6 +220,19 @@ expression_condition_bool_toInstructions x lbl = match x with
                                                 
                                                 | _                                                     -> []
                                             )
+    | Expression_Identifier_To_Bool(exp) -> (match exp with 
+                                                   | Expression_Identifier_Operation(op) -> (match op with
+                                                                                                | Operation_Identifier_Less_Than_Identifier(lhs, rhs)          -> (JumpIfGreaterThanZero lbl)::(expression_identifier_operation_toInstructions (Operation_Identifier_Minus_Identifier (rhs, lhs)))
+                                                                                                | Operation_Identifier_Greater_Than_Identifier(lhs, rhs)       -> (JumpIfGreaterThanZero lbl)::(expression_identifier_operation_toInstructions (Operation_Identifier_Minus_Identifier (lhs, rhs)))
+                                                                                                | Operation_Identifier_Less_Than_Or_Eq_Identifier(lhs, rhs)    -> (JumpIfGreaterOrEqualToZero lbl)::(expression_identifier_operation_toInstructions (Operation_Identifier_Minus_Identifier (rhs, lhs)))
+                                                                                                | Operation_Identifier_Greater_Than_Or_Eq_Identifier(lhs, rhs) -> (JumpIfGreaterOrEqualToZero lbl)::(expression_identifier_operation_toInstructions (Operation_Identifier_Minus_Identifier (lhs, rhs)))
+                                                                                                | Operation_Identifier_Eq_Identifier(lhs, rhs)                 -> (JumpIfZero lbl)::(expression_identifier_operation_toInstructions (Operation_Identifier_Minus_Identifier (lhs, rhs)))
+                                                                                                | Operation_Identifier_Not_Eq_Identifier(lhs, rhs)             -> (JumpIfNotZero lbl)::(expression_identifier_operation_toInstructions (Operation_Identifier_Minus_Identifier (lhs, rhs))) 
+                                                                                                
+                                                                                                | _                                                            -> []
+                                                                                            )
+                                                   | _                                   -> []
+                                            )
     | _                                  -> []
 and
 expression_condition_identifier_toInstructions x lbl = match x with
@@ -250,7 +263,7 @@ numArgs x = match x with
     | Argument_List_List(_, args) -> 1 + (numArgs args)
     | Argument_List_Empty         -> 0
 and
-addArgsToSymbolTable x = addArgsToSymbolTable' x 0
+addArgsToSymbolTable x = addArgsToSymbolTable' x 1
 and
 addArgsToSymbolTable' x n = match x with
     | Argument_List_Element(iden)    -> (match iden with

@@ -1,79 +1,46 @@
-int foo()
+// Returns x
+int foo(int x)
 {
-    return 50;
-}
+    int ret := 0;
 
-int bar()
-{
-    return 100;
-}
-
-int main()
-{
-    int x := foo();         // 50
-    int y := bar();
-    return !x + !y;
-}
-
-
-
-
-
-
-
-/*
-int foo()
-{
-    int x := 5;
-    return !x;
-}
-
-int bar()
-{
     int i := 0;
-    
-    while(!i < 15)
+    while(!i < !x)
     {
+        ret := !ret + 10;
         i := !i + 1;
     };
     
-    return !i;
+    return !ret;
 }
 
-int main()
+// Returns x * y * z
+int bar(int x, int y, int z)
 {
-    int x := foo();
-    int y := 0;
-    y := bar();
-    return !x + !y;
-}
-*/
-
-
-
-
-
-
-
-
-
-
-/*
-int foo()
-{
-    return 10;
-}
-
-int bar()
-{
-    return 100;
+    int ret := 0;
+    
+    int i := 0;
+    int j := 0;
+    do
+    {
+        j := 0;
+        while(!j < !y)
+        {
+            ret := !ret + !z;
+            j := !j + 1;
+        };
+        
+        i := !i + 1;
+    }
+    while(!i < !x);
+    
+    return !ret;
 }
 
 int main()
 {
     int x := 0;
-    int y := foo();
-    int z := bar();
+    int y := foo(10);
+    int z := bar(20, 5, 4);
     
     if(!y > !z)
     {
@@ -84,19 +51,5 @@ int main()
         x := !z;
     };
     
-    int i := 0;
-    int j := 0;
-    do
-    {
-        while(!j < 10)
-        {
-            x := !x + 1;
-            j := !j + 1;
-        };
-        i := !i + 1;
-    }
-    while(!i < 10);
-    
-    return !x - 200;
+    return !x - 400;
 }
-*/
