@@ -94,8 +94,7 @@ instructionList_of_parseTree x numRegisters = resetLabels (); setMaxRegisters nu
     | ParseTree_Empty               -> []
 and
 function_list_toInstructions x  = match x with
-    | Function_List_Def(funcDefinition)            -> let instructions = (*pushScope ();*) function_definition_toInstructions funcDefinition in
-                                                      (*popScope ();*) instructions    (* calculate instructions before popping *)
+    | Function_List_Def(funcDefinition)            -> function_definition_toInstructions funcDefinition
     | Function_List_List(funcDefinition, funcList) -> (function_list_toInstructions funcList)@(function_definition_toInstructions funcDefinition)
     (* Syntax makes this a nightmare to implement, since the label can end up after the let/new statement.
        So just use normal variable declarations for now *)
@@ -107,16 +106,10 @@ and
 new_statement_toInstructions x = []
 and
 pushGeneralRegisters =
-(*
     [PushOnStack(RegisterNum(1)); PushOnStack(RegisterNum(2)); PushOnStack(RegisterNum(3)); PushOnStack(RegisterNum(4)); PushOnStack(RegisterNum(5)); PushOnStack(RegisterNum(6)); PushOnStack(RegisterNum(7)); PushOnStack(RegisterNum(8)); PushOnStack(RegisterNum(9)); PushOnStack(RegisterNum(10))]
-*)
-    []
 and
 popGeneralRegisters =
-(*
     [PopFromStack(RegisterNum(10)); PopFromStack(RegisterNum(9)); PopFromStack(RegisterNum(8)); PopFromStack(RegisterNum(7)); PopFromStack(RegisterNum(6)); PopFromStack(RegisterNum(5)); PopFromStack(RegisterNum(4)); PopFromStack(RegisterNum(3)); PopFromStack(RegisterNum(2)); PopFromStack(RegisterNum(1))]
-*)
-    []
 and
 pushArgs x = (pushArgs' x 1)@[PushStack (numArgs x)]
 and
@@ -133,8 +126,8 @@ pushArgs' x n = match x with
 and
 function_definition_toInstructions x = match x with
     | Function_Definition(iden, args, statements) -> let instructions = clearSymbolTable (); resetStack (); resetRegisters (); addArgsToSymbolTable args; statement_list_toInstructions statements in
-                                                     (Return)::popGeneralRegisters@[PopFromStack(RegisterBasePtr); MoveData (RegisterNum(1), RegisterAcc); PopStack (!stackOffset)]@
-                                                     (MoveData(RegisterAcc, RegisterNum(1)))::instructions@(pushArgs args)@[MoveData(RegisterStackPtr, RegisterBasePtr); PushOnStack(RegisterBasePtr)]@pushGeneralRegisters@[Label(nameOfFunction x)]
+                                                     (Return)::[PopFromStack(RegisterBasePtr); MoveData (RegisterNum(1), RegisterAcc); PopStack (!stackOffset)]@
+                                                     (MoveData(RegisterAcc, RegisterNum(1)))::instructions@(pushArgs args)@[MoveData(RegisterStackPtr, RegisterBasePtr); PushOnStack(RegisterBasePtr); Label(nameOfFunction x)]
 and
 statement_list_toInstructions x = match x with
     | Statement_List_Empty                -> []
@@ -247,17 +240,6 @@ expression_condition_identifier_toInstructions x lbl = match x with
                                              )
     | _                                   -> []
 and
-
-(*
-pushParams x = match x with
-    | Parameter_List_Element(exp)       -> (PushOnStack (RegisterAcc))::(expression_toInstructions exp)
-    | Parameter_List_List(exp, params)  -> (pushParams params)@(PushOnStack (RegisterAcc))::(expression_toInstructions exp)
-    | Parameter_List_Empty              -> []
-and
-popArgs x = [PopStack(numArgs x)]
-and
-*)
-
 numArgs x = match x with
     | Argument_List_Element(_)    -> 1
     | Argument_List_List(_, args) -> 1 + (numArgs args)
@@ -289,7 +271,7 @@ expression_identifier_toInstructions (x : expression_identifier) = match x with
     
     | Expression_Identifier_Dereference(iden)           -> [findItentifier iden]
     | Expression_Identifier_Function_Call(iden, params) -> (match iden with
-                                                                  | Identifier_Reference(name) -> (Call (name))::(storeParams params)
+                                                                  | Identifier_Reference(name) -> popGeneralRegisters@(Call (name))::(storeParams params)@pushGeneralRegisters
                                                                   | _                          -> raise (CodeGenerationError ("Cannot call function definition"))
                                                            )
     | Expression_Identifier_Variable_Ref(iden)          -> (match iden with
