@@ -14,7 +14,7 @@ Repository for the source files and documentation of the MattC compiler, created
 ## How to Run the Compiler
 
 1. Navigate to the `/src/` folder
-2. Run `make unix` (for unix) or `make windows` (for windows)
+2. Run `make` (for Ubuntu) or `make windows` (for Windows)
   - On the lab machines, remember to run the command `module load opam` so that the ocaml binaries are available
 3. You can then run `mattc <filename>`, where `<filename>` is the file you want to compile. MattC files use the `.mc` file extension
   - The compiler will work on any number of files given as arguments
@@ -29,6 +29,7 @@ Repository for the source files and documentation of the MattC compiler, created
   - The `-c` option actually compiles the code
   - The `-out` option sets the filename of the compiled file
   - The `-s` option simulates the generated machine instructions and shows the return value
+  - The `-exp` option is used for testing, and checks that the evaluated or simulated program matches the given input
 
 
 ## Syntax in a Nutshell

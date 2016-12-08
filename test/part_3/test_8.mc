@@ -18,5 +18,5 @@ int main()
     
     int x := 1;
     
-    return "When you divide by 3 you get " ^ makePercent(divByThree(!x as float)) as string ^ " of the total"; // "When you divide by 3 you get 33% of the total"
+    return "When_you_divide_by_3_you_get_" ^ makePercent(divByThree(!x as float)) as string ^ "_of_the_total"; // "When you divide by 3 you get 33% of the total"
 }

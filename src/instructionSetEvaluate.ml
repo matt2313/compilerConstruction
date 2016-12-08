@@ -18,16 +18,21 @@ let ramOffset = 0
 
 let instructionPointer = ref []
 
-let getRam n = getMemory (!ram.(n - ramOffset))
+let getRam n = try getMemory (!ram.(n - ramOffset)) with
+                   | InstructionSimulationError(str) -> raise (InstructionSimulationError (str ^ " in RAM location " ^ (string_of_int n)))
 let setRam n x = !ram.(n - ramOffset) <- Memory(x)
 
-let getRegAcc () = getMemory (!registers.(0))
+let getRegAcc () = try getMemory (!registers.(0)) with
+                   | InstructionSimulationError(str) -> raise (InstructionSimulationError (str ^ " in acc register"))
 let setRegAcc x = !registers.(0) <- Memory(x)
-let getRegBase () = getMemory (!registers.(1))
+let getRegBase () = try getMemory (!registers.(1)) with
+                   | InstructionSimulationError(str) -> raise (InstructionSimulationError (str ^ " in base register"))
 let setRegBase x = !registers.(1) <- Memory(x)
-let getRegStack () = getMemory (!registers.(2))
+let getRegStack () = try getMemory (!registers.(2)) with
+                   | InstructionSimulationError(str) -> raise (InstructionSimulationError (str ^ " in stack register"))
 let setRegStack x = !registers.(2) <- Memory(x)
-let getRegGeneric n = getMemory (!registers.(2 + n))
+let getRegGeneric n = try getMemory (!registers.(2 + n)) with
+                   | InstructionSimulationError(str) -> raise (InstructionSimulationError (str ^ " in general register " ^ (string_of_int n)))
 let setRegGeneric n x = !registers.(2 + n) <- Memory(x)
 
 let getInstructionPointer () = match !instructionPointer with
@@ -50,6 +55,10 @@ let getValueFrom x = match x with
     | RegisterStackPtr   -> getRegStack ()
     | RegisterBasePtr    -> getRegBase ()
     | NoAddress          -> raise (InstructionSimulationError "Null address failure in getValueFrom")
+    
+(* Like getValueFrom, but doesn't care or warn you if you try to read invalid memory *)
+let getValueFromUnsafe x = try getValueFrom x with
+    | InstructionSimulationError(_) -> -1
     
 let setValueOf x iVal = match x with
     | RegisterNum(n)   -> setRegGeneric n iVal
@@ -82,7 +91,7 @@ let processInstruction x = match x with
     | MoveData(addrFrom, addrTo) -> setValueOf addrTo (getValueFrom addrFrom)
     
     | PushStack(iVal)            -> setRegStack ((getRegStack ()) + iVal)
-    | PushOnStack(addr)          -> setRegStack ((getRegStack ()) + 1); setRam (getRegStack ()) (getValueFrom addr)
+    | PushOnStack(addr)          -> setRegStack ((getRegStack ()) + 1); setRam (getRegStack ()) (getValueFromUnsafe addr)
     | PushRegisters              -> for n = 1 to numRegisters do
                                         setRegStack ((getRegStack ()) + 1);
                                         setRam (getRegStack ()) (getRegGeneric n)
@@ -120,6 +129,7 @@ let rec evaluateInstructionSet' currSet completeSet = match currSet with
                               | Return                          -> getInstructionPointer ()
                               | _                               -> tl
                 in
+                (*print_endline (instruction_toString hd);*) (* Uncomment for debugging *)
                 processInstruction hd;
                 evaluateInstructionSet' newTail completeSet
     | []     -> getRegAcc ()

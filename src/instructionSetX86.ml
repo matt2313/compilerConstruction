@@ -73,12 +73,13 @@ let instructionX86_toString x = match x with
                                       then let addrStr = addressX86_toString addr in
                                            "lea " ^ (string_of_int n) ^ "(" ^ addrStr ^ "), " ^ addrStr
                                       else raise (X86GenerationError "Cannot use AddAddress on stack address")
+                                      
     | X86_Jump(lbl)                 -> "jmp MC_" ^ lbl
     | X86_JumpIfEqual(lbl)          -> "je MC_" ^ lbl 
     | X86_JumpIfNotEqual(lbl)       -> "jne MC_" ^ lbl
     | X86_JumpIfGreaterThan(lbl)    -> "jnle MC_" ^ lbl
     | X86_JumpIfGreaterOrEqual(lbl) -> "jnl MC_" ^ lbl
-    | X86_Call(lbl)                 -> "call MC_" ^ lbl
+    | X86_Call(lbl)                 -> "callq MC_" ^ lbl
     | X86_Return                    -> "ret"
     
     | X86_Label(lbl)                -> "MC_" ^ lbl ^ ":"
@@ -106,6 +107,7 @@ let instructionToX86List x = match x with
     | StoreValueIn(addr) -> [X86_MoveValueOf_In(GeneralRegisterX86(0), (addressToX86 addr))]
     | LoadConstant(n)    -> [X86_MoveConstant(n, GeneralRegisterX86(0))]
     | LoadAddress(addr)  -> [X86_MoveAddress((addressToX86 addr), (GeneralRegisterX86(0)))]
+    
     | PushStack(n)       -> [X86_MoveConstant(n * stackDirection * variableSize, GeneralRegisterX86(0)); X86_Add(GeneralRegisterX86(0), StackPointerX86)]
     | PushOnStack(addr)  -> [X86_Push(addressToX86 addr)]
     | PushRegisters      -> []

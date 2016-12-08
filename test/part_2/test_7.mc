@@ -8,7 +8,7 @@ string main()
         // This is a really hacky way to get even numbers
         if((!count + 1) / 2 == (!count / 2))
         {
-            out := !out ^ (!count as string) ^ " ";
+            out := !out ^ (!count as string) ^ "_";
         };
         
         count := !count - 1;

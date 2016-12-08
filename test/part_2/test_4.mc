@@ -1,6 +1,6 @@
 string main()
 {
-    string a := "hello ";
+    string a := "hello_";
     string b := "world";
     string c := "!";
     
